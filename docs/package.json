@@ -1,0 +1,35 @@
+{
+  "name": "healthsync-docs",
+  "version": "1.8.2",
+  "description": "Doks theme",
+  "author": "Thulite",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thuliteio/doks.git"
+  },
+  "scripts": {
+    "create": "hugo new",
+    "dev": "hugo server --disableFastRender --noHTTPCache",
+    "format": "prettier **/** -w -c",
+    "build": "hugo --minify --gc",
+    "preview": "vite preview --outDir public"
+  },
+  "dependencies": {
+    "@thulite/doks-core": "^1.8.4",
+    "@thulite/images": "^3.3.4",
+    "@thulite/inline-svg": "^1.2.2",
+    "@thulite/seo": "^2.4.3",
+    "@tabler/icons": "^3.36.1",
+    "thulite": "^2.6.4"
+  },
+  "devDependencies": {
+    "@changesets/changelog-github": "^0.5.2",
+    "@changesets/cli": "^2.29.8",
+    "prettier": "^3.8.1",
+    "vite": "^7.3.1"
+  },
+  "engines": {
+    "node": ">=24.13.0"
+  }
+}

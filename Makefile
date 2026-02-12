@@ -1,4 +1,4 @@
-.PHONY: build test coverage clean run-parse run-server
+.PHONY: build test coverage clean tidy lint docs docs-dev
 
 BINARY := healthsync
 
@@ -24,3 +24,9 @@ tidy:
 
 lint:
 	go vet ./...
+
+docs:
+	cd docs && npm run build
+
+docs-dev:
+	cd docs && npm run dev
