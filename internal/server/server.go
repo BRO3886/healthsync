@@ -13,7 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
-	"github.com/sidv/health-sync/internal/storage"
+	"github.com/BRO3886/healthsync/internal/storage"
 )
 
 // Config holds server configuration.

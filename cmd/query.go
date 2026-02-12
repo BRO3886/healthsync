@@ -11,7 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sidv/health-sync/internal/storage"
+	"github.com/BRO3886/healthsync/internal/storage"
 )
 
 var (

@@ -1,6 +1,6 @@
 package main
 
-import "github.com/sidv/health-sync/cmd"
+import "github.com/BRO3886/healthsync/cmd"
 
 func main() {
 	cmd.Execute()

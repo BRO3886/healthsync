@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sidv/health-sync/internal/storage"
+	"github.com/BRO3886/healthsync/internal/storage"
 )
 
 // ParseResult holds the parsing outcome.

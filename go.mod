@@ -1,4 +1,4 @@
-module github.com/sidv/health-sync
+module github.com/BRO3886/healthsync
 
 go 1.24.5
 

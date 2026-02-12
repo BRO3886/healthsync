@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sidv/health-sync/internal/storage"
+	"github.com/BRO3886/healthsync/internal/storage"
 )
 
 func tempDB(t *testing.T) *storage.DB {

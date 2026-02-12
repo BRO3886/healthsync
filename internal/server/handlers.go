@@ -15,8 +15,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/sidv/health-sync/internal/parser"
-	"github.com/sidv/health-sync/internal/storage"
+	"github.com/BRO3886/healthsync/internal/parser"
+	"github.com/BRO3886/healthsync/internal/storage"
 )
 
 type handlers struct {
