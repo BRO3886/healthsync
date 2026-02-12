@@ -1,0 +1,18 @@
+# Binary
+healthsync
+
+# Export data
+*.zip
+*.xml
+
+# SQLite
+*.db
+*.db-wal
+*.db-shm
+
+# OS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/

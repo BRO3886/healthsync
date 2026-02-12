@@ -1,0 +1,479 @@
+package storage
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func tempDB(t *testing.T) *DB {
+	t.Helper()
+	dir := t.TempDir()
+	db, err := Open(filepath.Join(dir, "test.db"))
+	if err != nil {
+		t.Fatalf("opening test db: %v", err)
+	}
+	t.Cleanup(func() { db.Close() })
+	return db
+}
+
+func TestDefaultDBPath(t *testing.T) {
+	p := DefaultDBPath()
+	if p == "" {
+		t.Fatal("DefaultDBPath returned empty string")
+	}
+	if filepath.Base(p) != "healthsync.db" {
+		t.Errorf("expected healthsync.db, got %s", filepath.Base(p))
+	}
+	if !filepath.IsAbs(p) {
+		t.Errorf("expected absolute path, got %s", p)
+	}
+}
+
+func TestOpen_CreatesDirectory(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "sub", "nested", "test.db")
+
+	db, err := Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+	db.Close()
+
+	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+		t.Error("database file was not created")
+	}
+}
+
+func TestOpen_InvalidPath(t *testing.T) {
+	_, err := Open("/dev/null/impossible/test.db")
+	if err == nil {
+		t.Fatal("expected error for invalid path")
+	}
+}
+
+func TestOpen_IdempotentMigration(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "test.db")
+
+	// Open and close twice — migration should be idempotent
+	db1, err := Open(dbPath)
+	if err != nil {
+		t.Fatalf("first open: %v", err)
+	}
+	db1.Close()
+
+	db2, err := Open(dbPath)
+	if err != nil {
+		t.Fatalf("second open: %v", err)
+	}
+	db2.Close()
+}
+
+func TestConn_ReturnsUnderlyingDB(t *testing.T) {
+	db := tempDB(t)
+	if db.Conn() == nil {
+		t.Fatal("Conn() returned nil")
+	}
+}
+
+// --- BatchInsertRecords ---
+
+func TestBatchInsert_EmptyRecords(t *testing.T) {
+	db := tempDB(t)
+	stats, err := db.BatchInsertRecords("heart_rate", []string{"source_name", "start_date", "end_date", "value", "unit"}, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if stats.Inserted != 0 || stats.Skipped != 0 {
+		t.Errorf("expected 0/0, got %d/%d", stats.Inserted, stats.Skipped)
+	}
+}
+
+func TestBatchInsert_SingleRecord(t *testing.T) {
+	db := tempDB(t)
+	cols := []string{"source_name", "start_date", "end_date", "value", "unit"}
+	records := [][]any{
+		{"Watch", "2024-01-01 00:00:00", "2024-01-01 00:01:00", 72.0, "count/min"},
+	}
+	stats, err := db.BatchInsertRecords("heart_rate", cols, records)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if stats.Inserted != 1 {
+		t.Errorf("expected 1 inserted, got %d", stats.Inserted)
+	}
+}
+
+func TestBatchInsert_ExactBatchBoundary(t *testing.T) {
+	db := tempDB(t)
+	cols := []string{"source_name", "start_date", "end_date", "value", "unit"}
+	records := make([][]any, 1000)
+	for i := range records {
+		records[i] = []any{"Watch", "2024-01-01 00:00:00", "2024-01-01 00:01:00", float64(i), "count/min"}
+	}
+	stats, err := db.BatchInsertRecords("heart_rate", cols, records)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if stats.Inserted != 1000 {
+		t.Errorf("expected 1000 inserted, got %d", stats.Inserted)
+	}
+}
+
+func TestBatchInsert_CrossesBatchBoundary(t *testing.T) {
+	db := tempDB(t)
+	cols := []string{"source_name", "start_date", "end_date", "value", "unit"}
+	records := make([][]any, 1001)
+	for i := range records {
+		records[i] = []any{"Watch", "2024-01-01 00:00:00", "2024-01-01 00:01:00", float64(i), "count/min"}
+	}
+	stats, err := db.BatchInsertRecords("heart_rate", cols, records)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if stats.Inserted != 1001 {
+		t.Errorf("expected 1001 inserted, got %d", stats.Inserted)
+	}
+}
+
+func TestBatchInsert_Dedup(t *testing.T) {
+	db := tempDB(t)
+	cols := []string{"source_name", "start_date", "end_date", "value", "unit"}
+	row := []any{"Watch", "2024-01-01 00:00:00", "2024-01-01 00:01:00", 72.0, "count/min"}
+
+	// Insert once
+	stats1, err := db.BatchInsertRecords("heart_rate", cols, [][]any{row})
+	if err != nil {
+		t.Fatalf("first insert: %v", err)
+	}
+	if stats1.Inserted != 1 {
+		t.Errorf("first: expected 1 inserted, got %d", stats1.Inserted)
+	}
+
+	// Insert same row again — should be ignored
+	stats2, err := db.BatchInsertRecords("heart_rate", cols, [][]any{row})
+	if err != nil {
+		t.Fatalf("second insert: %v", err)
+	}
+	if stats2.Inserted != 0 {
+		t.Errorf("second: expected 0 inserted, got %d", stats2.Inserted)
+	}
+	if stats2.Skipped != 1 {
+		t.Errorf("second: expected 1 skipped, got %d", stats2.Skipped)
+	}
+}
+
+func TestBatchInsert_MixNewAndDuplicate(t *testing.T) {
+	db := tempDB(t)
+	cols := []string{"source_name", "start_date", "end_date", "value", "unit"}
+
+	existing := []any{"Watch", "2024-01-01 00:00:00", "2024-01-01 00:01:00", 72.0, "count/min"}
+	db.BatchInsertRecords("heart_rate", cols, [][]any{existing})
+
+	mixed := [][]any{
+		existing,                                                                              // duplicate
+		{"Watch", "2024-01-01 00:02:00", "2024-01-01 00:03:00", 75.0, "count/min"},           // new
+		{"Watch", "2024-01-01 00:04:00", "2024-01-01 00:05:00", 80.0, "count/min"},           // new
+	}
+	stats, err := db.BatchInsertRecords("heart_rate", cols, mixed)
+	if err != nil {
+		t.Fatalf("mixed insert: %v", err)
+	}
+	if stats.Inserted != 2 {
+		t.Errorf("expected 2 inserted, got %d", stats.Inserted)
+	}
+	if stats.Skipped != 1 {
+		t.Errorf("expected 1 skipped, got %d", stats.Skipped)
+	}
+}
+
+func TestBatchInsert_InvalidTable(t *testing.T) {
+	db := tempDB(t)
+	_, err := db.BatchInsertRecords("nonexistent_table", []string{"col"}, [][]any{{"val"}})
+	if err == nil {
+		t.Fatal("expected error for invalid table")
+	}
+}
+
+func TestBatchInsert_SleepTable(t *testing.T) {
+	db := tempDB(t)
+	cols := []string{"source_name", "start_date", "end_date", "value"}
+	records := [][]any{
+		{"Watch", "2024-01-01 22:00:00", "2024-01-02 06:00:00", "HKCategoryValueSleepAnalysisAsleepCore"},
+	}
+	stats, err := db.BatchInsertRecords("sleep", cols, records)
+	if err != nil {
+		t.Fatalf("sleep insert: %v", err)
+	}
+	if stats.Inserted != 1 {
+		t.Errorf("expected 1 inserted, got %d", stats.Inserted)
+	}
+}
+
+func TestBatchInsert_WorkoutsTable(t *testing.T) {
+	db := tempDB(t)
+	cols := []string{
+		"activity_type", "source_name", "start_date", "end_date",
+		"duration", "duration_unit",
+		"total_distance", "total_distance_unit",
+		"total_energy_burned", "total_energy_burned_unit",
+	}
+	records := [][]any{
+		{"HKWorkoutActivityTypeRunning", "Watch", "2024-01-01 08:00:00", "2024-01-01 08:30:00",
+			30.0, "min", 5.0, "km", 300.0, "kcal"},
+	}
+	stats, err := db.BatchInsertRecords("workouts", cols, records)
+	if err != nil {
+		t.Fatalf("workout insert: %v", err)
+	}
+	if stats.Inserted != 1 {
+		t.Errorf("expected 1 inserted, got %d", stats.Inserted)
+	}
+}
+
+func TestBatchInsert_WorkoutsNullOptionalFields(t *testing.T) {
+	db := tempDB(t)
+	cols := []string{
+		"activity_type", "source_name", "start_date", "end_date",
+		"duration", "duration_unit",
+		"total_distance", "total_distance_unit",
+		"total_energy_burned", "total_energy_burned_unit",
+	}
+	records := [][]any{
+		{"HKWorkoutActivityTypeYoga", "Watch", "2024-01-01 08:00:00", "2024-01-01 09:00:00",
+			60.0, "min", nil, nil, nil, nil},
+	}
+	stats, err := db.BatchInsertRecords("workouts", cols, records)
+	if err != nil {
+		t.Fatalf("workout insert: %v", err)
+	}
+	if stats.Inserted != 1 {
+		t.Errorf("expected 1 inserted, got %d", stats.Inserted)
+	}
+}
+
+// --- QueryRows ---
+
+func TestQueryRows_UnknownTable(t *testing.T) {
+	db := tempDB(t)
+	_, err := db.QueryRows(QueryParams{Table: "bogus"})
+	if err == nil {
+		t.Fatal("expected error for unknown table")
+	}
+}
+
+func TestQueryRows_EmptyTable(t *testing.T) {
+	db := tempDB(t)
+	rows, err := db.QueryRows(QueryParams{Table: "heart-rate", Limit: 10})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(rows) != 0 {
+		t.Errorf("expected 0 rows, got %d", len(rows))
+	}
+}
+
+func TestQueryRows_WithData(t *testing.T) {
+	db := tempDB(t)
+	cols := []string{"source_name", "start_date", "end_date", "value", "unit"}
+	records := [][]any{
+		{"Watch", "2024-01-01 00:00:00", "2024-01-01 00:01:00", 72.0, "count/min"},
+		{"Watch", "2024-01-02 00:00:00", "2024-01-02 00:01:00", 75.0, "count/min"},
+		{"Watch", "2024-01-03 00:00:00", "2024-01-03 00:01:00", 80.0, "count/min"},
+	}
+	db.BatchInsertRecords("heart_rate", cols, records)
+
+	rows, err := db.QueryRows(QueryParams{Table: "heart-rate", Limit: 10})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(rows) != 3 {
+		t.Errorf("expected 3 rows, got %d", len(rows))
+	}
+}
+
+func TestQueryRows_FromFilter(t *testing.T) {
+	db := tempDB(t)
+	cols := []string{"source_name", "start_date", "end_date", "value", "unit"}
+	records := [][]any{
+		{"Watch", "2024-01-01 00:00:00", "2024-01-01 00:01:00", 72.0, "count/min"},
+		{"Watch", "2024-06-01 00:00:00", "2024-06-01 00:01:00", 75.0, "count/min"},
+		{"Watch", "2024-12-01 00:00:00", "2024-12-01 00:01:00", 80.0, "count/min"},
+	}
+	db.BatchInsertRecords("heart_rate", cols, records)
+
+	rows, err := db.QueryRows(QueryParams{Table: "heart-rate", From: "2024-06-01", Limit: 50})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(rows) != 2 {
+		t.Errorf("expected 2 rows with from filter, got %d", len(rows))
+	}
+}
+
+func TestQueryRows_ToFilter(t *testing.T) {
+	db := tempDB(t)
+	cols := []string{"source_name", "start_date", "end_date", "value", "unit"}
+	records := [][]any{
+		{"Watch", "2024-01-01 00:00:00", "2024-01-01 00:01:00", 72.0, "count/min"},
+		{"Watch", "2024-06-01 00:00:00", "2024-06-01 00:01:00", 75.0, "count/min"},
+		{"Watch", "2024-12-01 00:00:00", "2024-12-01 00:01:00", 80.0, "count/min"},
+	}
+	db.BatchInsertRecords("heart_rate", cols, records)
+
+	// Note: "2024-06-02" ensures the 2024-06-01 record is included
+	// since start_date "2024-06-01 00:00:00" <= "2024-06-02"
+	rows, err := db.QueryRows(QueryParams{Table: "heart-rate", To: "2024-06-02", Limit: 50})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(rows) != 2 {
+		t.Errorf("expected 2 rows with to filter, got %d", len(rows))
+	}
+}
+
+func TestQueryRows_FromAndToFilter(t *testing.T) {
+	db := tempDB(t)
+	cols := []string{"source_name", "start_date", "end_date", "value", "unit"}
+	records := [][]any{
+		{"Watch", "2024-01-01 00:00:00", "2024-01-01 00:01:00", 72.0, "count/min"},
+		{"Watch", "2024-06-01 00:00:00", "2024-06-01 00:01:00", 75.0, "count/min"},
+		{"Watch", "2024-12-01 00:00:00", "2024-12-01 00:01:00", 80.0, "count/min"},
+	}
+	db.BatchInsertRecords("heart_rate", cols, records)
+
+	rows, err := db.QueryRows(QueryParams{Table: "heart-rate", From: "2024-03-01", To: "2024-09-01", Limit: 50})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Errorf("expected 1 row with from+to filter, got %d", len(rows))
+	}
+}
+
+func TestQueryRows_LimitZero(t *testing.T) {
+	db := tempDB(t)
+	cols := []string{"source_name", "start_date", "end_date", "value", "unit"}
+	records := make([][]any, 5)
+	for i := range records {
+		records[i] = []any{"Watch", "2024-01-01 00:00:00", "2024-01-01 00:01:00", float64(60 + i), "count/min"}
+	}
+	db.BatchInsertRecords("heart_rate", cols, records)
+
+	// Limit 0 means no LIMIT clause
+	rows, err := db.QueryRows(QueryParams{Table: "heart-rate", Limit: 0})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(rows) != 5 {
+		t.Errorf("expected 5 rows with no limit, got %d", len(rows))
+	}
+}
+
+func TestQueryRows_CLIFriendlyNames(t *testing.T) {
+	db := tempDB(t)
+
+	// Both heart-rate and heart_rate should work
+	for _, name := range []string{"heart-rate", "heart_rate"} {
+		_, err := db.QueryRows(QueryParams{Table: name, Limit: 1})
+		if err != nil {
+			t.Errorf("table name %q should be valid, got error: %v", name, err)
+		}
+	}
+	for _, name := range []string{"vo2max", "vo2_max"} {
+		_, err := db.QueryRows(QueryParams{Table: name, Limit: 1})
+		if err != nil {
+			t.Errorf("table name %q should be valid, got error: %v", name, err)
+		}
+	}
+}
+
+func TestQueryRows_OrderDescending(t *testing.T) {
+	db := tempDB(t)
+	cols := []string{"source_name", "start_date", "end_date", "value", "unit"}
+	records := [][]any{
+		{"Watch", "2024-01-01 00:00:00", "2024-01-01 00:01:00", 72.0, "count/min"},
+		{"Watch", "2024-01-03 00:00:00", "2024-01-03 00:01:00", 80.0, "count/min"},
+		{"Watch", "2024-01-02 00:00:00", "2024-01-02 00:01:00", 75.0, "count/min"},
+	}
+	db.BatchInsertRecords("heart_rate", cols, records)
+
+	rows, err := db.QueryRows(QueryParams{Table: "heart-rate", Limit: 10})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should be ordered by start_date DESC
+	first := rows[0]["start_date"].(string)
+	if first != "2024-01-03 00:00:00" {
+		t.Errorf("expected first row to be 2024-01-03, got %s", first)
+	}
+}
+
+// --- CountRows ---
+
+func TestCountRows_EmptyTable(t *testing.T) {
+	db := tempDB(t)
+	count, err := db.CountRows("heart-rate")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if count != 0 {
+		t.Errorf("expected 0, got %d", count)
+	}
+}
+
+func TestCountRows_UnknownTable(t *testing.T) {
+	db := tempDB(t)
+	_, err := db.CountRows("bogus")
+	if err == nil {
+		t.Fatal("expected error for unknown table")
+	}
+}
+
+func TestCountRows_WithData(t *testing.T) {
+	db := tempDB(t)
+	cols := []string{"source_name", "start_date", "end_date", "value", "unit"}
+	records := [][]any{
+		{"Watch", "2024-01-01 00:00:00", "2024-01-01 00:01:00", 72.0, "count/min"},
+		{"Watch", "2024-01-02 00:00:00", "2024-01-02 00:01:00", 75.0, "count/min"},
+	}
+	db.BatchInsertRecords("heart_rate", cols, records)
+
+	count, err := db.CountRows("heart-rate")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if count != 2 {
+		t.Errorf("expected 2, got %d", count)
+	}
+}
+
+// --- ValidTableNames ---
+
+func TestValidTableNames(t *testing.T) {
+	names := ValidTableNames()
+	expected := map[string]bool{
+		"heart-rate": true, "steps": true, "spo2": true,
+		"vo2max": true, "sleep": true, "workouts": true,
+	}
+	if len(names) != len(expected) {
+		t.Errorf("expected %d names, got %d", len(expected), len(names))
+	}
+	for _, n := range names {
+		if !expected[n] {
+			t.Errorf("unexpected table name: %s", n)
+		}
+	}
+}
+
+// --- TableNameMap ---
+
+func TestTableNameMap_AllCLINamesResolve(t *testing.T) {
+	for _, name := range ValidTableNames() {
+		if _, ok := TableNameMap[name]; !ok {
+			t.Errorf("CLI name %q not in TableNameMap", name)
+		}
+	}
+}
