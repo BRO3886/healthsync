@@ -67,16 +67,33 @@ curl http://localhost:8080/api/upload/status
 curl "http://localhost:8080/api/health/heart-rate?limit=5"
 ```
 
-## Data stored
+## Metrics
+
+### Currently parsed
 
 | Table | Apple Health Type | Fields |
 |-------|-------------------|--------|
-| `heart_rate` | HeartRate | source, start/end date, value (BPM), unit |
-| `steps` | StepCount | source, start/end date, value (count), unit |
-| `spo2` | OxygenSaturation | source, start/end date, value (%), unit |
-| `vo2_max` | VO2Max | source, start/end date, value, unit |
-| `sleep` | SleepAnalysis | source, start/end date, sleep stage |
-| `workouts` | Workout | type, source, start/end date, duration, distance, energy |
+| `heart_rate` | `HKQuantityTypeIdentifierHeartRate` | source, start/end date, value (BPM), unit |
+| `steps` | `HKQuantityTypeIdentifierStepCount` | source, start/end date, value (count), unit |
+| `spo2` | `HKQuantityTypeIdentifierOxygenSaturation` | source, start/end date, value (0-1 fraction), unit |
+| `vo2_max` | `HKQuantityTypeIdentifierVO2Max` | source, start/end date, value (mL/min·kg), unit |
+| `sleep` | `HKCategoryTypeIdentifierSleepAnalysis` | source, start/end date, sleep stage |
+| `workouts` | All `HKWorkoutActivityType*` | type, source, start/end date, duration, distance, energy |
+
+### Available but not yet parsed
+
+These types exist in Apple Health exports but are not currently stored. Open an issue if you'd like support for any of these.
+
+| Category | Types |
+|----------|-------|
+| **Vitals** | RestingHeartRate, HeartRateVariabilitySDNN, HeartRateRecoveryOneMinute, RespiratoryRate, BloodPressureSystolic/Diastolic |
+| **Activity** | ActiveEnergyBurned, BasalEnergyBurned, AppleExerciseTime, AppleStandTime, FlightsClimbed, DistanceWalkingRunning, DistanceCycling |
+| **Body** | BodyMass, BodyMassIndex, Height |
+| **Mobility** | WalkingSpeed, WalkingStepLength, WalkingAsymmetryPercentage, WalkingDoubleSupportPercentage, AppleWalkingSteadiness, StairAscent/DescentSpeed, SixMinuteWalkTestDistance |
+| **Running** | RunningSpeed, RunningPower, RunningStrideLength, RunningGroundContactTime, RunningVerticalOscillation |
+| **Audio** | EnvironmentalAudioExposure, HeadphoneAudioExposure, EnvironmentalSoundReduction |
+| **Other** | AppleSleepingWristTemperature, TimeInDaylight, DietaryWater, PhysicalEffort, WalkingHeartRateAverage |
+| **Category** | MindfulSession, AppleStandHour, HandwashingEvent, ToothbrushingEvent, MenstrualFlow |
 
 ## Design
 
