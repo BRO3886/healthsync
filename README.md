@@ -2,13 +2,26 @@
 
 Sync Apple Health export data into a local queryable SQLite database. Two modes: CLI for local file parsing, HTTP server for receiving uploads over Tailscale from iPhone Shortcuts.
 
+**Docs**: [healthsync.sidv.dev](https://healthsync.sidv.dev)
+
 ## Install
+
+Download a pre-built binary from [GitHub Releases](https://github.com/BRO3886/healthsync/releases):
+
+```bash
+# macOS (Apple Silicon)
+curl -L https://github.com/BRO3886/healthsync/releases/latest/download/healthsync-darwin-arm64 -o healthsync
+chmod +x healthsync
+sudo mv healthsync /usr/local/bin/
+```
+
+Or install with Go:
 
 ```bash
 go install github.com/BRO3886/healthsync@latest
 ```
 
-Or build from source:
+Or build from source (requires Go 1.21+):
 
 ```bash
 git clone git@github.com:BRO3886/healthsync.git
