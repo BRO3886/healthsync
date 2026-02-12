@@ -1,6 +1,7 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en">
 <head>
+  {{- partial "dark-mode.html" . -}}
   {{- partial "head.html" . -}}
 </head>
 <body>
@@ -9,7 +10,6 @@
     {{- block "main" . }}{{- end }}
   </main>
   {{- partial "footer.html" . -}}
-  {{- partial "dark-mode.html" . -}}
   <script src="/js/main.js" defer></script>
 </body>
 </html>
