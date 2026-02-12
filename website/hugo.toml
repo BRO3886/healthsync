@@ -1,0 +1,51 @@
+title = "healthsync"
+baseurl = "/"
+disableHugoGeneratorInject = true
+enableEmoji = true
+enableRobotsTXT = true
+languageCode = "en-US"
+copyRight = "Copyright (c) 2026 Siddhartha Varma"
+
+[sitemap]
+  changefreq = "monthly"
+  filename = "sitemap.xml"
+  priority = 0.5
+
+[minify.tdewolff.html]
+  keepWhitespace = false
+
+# Markup
+[markup]
+  defaultMarkdownHandler = "goldmark"
+  [markup.goldmark.extensions]
+    linkify = false
+  [markup.goldmark.parser]
+    autoHeadingID = true
+    autoHeadingIDType = "github"
+    [markup.goldmark.parser.attribute]
+      block = true
+      title = true
+  [markup.goldmark.renderer]
+    unsafe = true
+  [markup.highlight]
+    codeFences = true
+    noClasses = true
+    style = "monokai"
+    tabWidth = 2
+  [markup.tableOfContents]
+    endLevel = 3
+    ordered = false
+    startLevel = 2
+
+# Menus
+[[menus.main]]
+  name = "Docs"
+  url = "/docs/getting-started/"
+  weight = 10
+
+[[menus.main]]
+  name = "GitHub"
+  url = "https://github.com/BRO3886/healthsync"
+  weight = 20
+  [menus.main.params]
+    external = true

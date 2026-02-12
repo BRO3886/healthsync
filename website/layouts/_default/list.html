@@ -1,0 +1,19 @@
+{{ define "main" }}
+<div class="docs-layout">
+  {{- partial "sidebar.html" . -}}
+  <article class="docs-content">
+    <h1>{{ .Title }}</h1>
+    {{ .Content }}
+    {{ if .Pages }}
+    <div class="docs-list">
+      {{ range .Pages.ByWeight }}
+      <a class="docs-list-item" href="{{ .RelPermalink }}">
+        <h3>{{ .Title }}</h3>
+        <p>{{ .Description }}</p>
+      </a>
+      {{ end }}
+    </div>
+    {{ end }}
+  </article>
+</div>
+{{ end }}

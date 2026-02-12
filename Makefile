@@ -1,9 +1,12 @@
-.PHONY: build test coverage clean tidy lint docs docs-dev
+.PHONY: build install test coverage clean tidy lint website website-dev
 
 BINARY := healthsync
 
 build:
 	go build -o $(BINARY) .
+
+install:
+	go build -o $(shell go env GOPATH)/bin/$(BINARY) .
 
 test:
 	go test ./... -v -count=1
@@ -25,8 +28,8 @@ tidy:
 lint:
 	go vet ./...
 
-docs:
-	cd docs && npm run build
+website:
+	cd website && hugo --minify
 
-docs-dev:
-	cd docs && npm run dev
+website-dev:
+	cd website && hugo server -D

@@ -1,0 +1,82 @@
+{{ define "main" }}
+<div class="home">
+  <div class="container">
+    <div class="home-hero">
+      <h1>healthsync</h1>
+      <p class="home-desc">Parse Apple Health exports into a local SQLite database.<br>Query from the CLI, serve over HTTP, or sync from iPhone via Tailscale.</p>
+      <div class="home-links">
+        <a href="/docs/getting-started/">Get Started</a>
+        <a href="https://github.com/BRO3886/healthsync">GitHub</a>
+      </div>
+    </div>
+
+    <pre class="home-code"><code>$ go install github.com/BRO3886/healthsync@latest
+
+$ healthsync parse export.zip
+Parsed 540,110 records and 1,011 workouts in 30.6s
+
+$ healthsync query heart-rate --limit 3
+┌────────┬───────┬─────────────────────────┐
+│ Source │ BPM   │ Date                    │
+├────────┼───────┼─────────────────────────┤
+│ Watch  │ 72    │ 2026-02-12 19:11:31     │
+│ Watch  │ 68    │ 2026-02-12 19:06:22     │
+│ Watch  │ 75    │ 2026-02-12 18:58:14     │
+└────────┴───────┴─────────────────────────┘
+
+$ healthsync query steps --from 2024-01-01 --format json
+$ healthsync query workouts --format csv
+$ healthsync server --port 8080</code></pre>
+
+    <div class="home-section">
+      <h2>What it does</h2>
+      <ul>
+        <li>Parses <code>.zip</code> or <code>.xml</code> Apple Health exports via streaming XML (constant ~10MB memory)</li>
+        <li>Stores records in <code>~/.healthsync/healthsync.db</code> (SQLite, WAL mode, deduplication via <code>INSERT OR IGNORE</code>)</li>
+        <li>Queries 6 metrics: heart rate, steps, SpO2, VO2 Max, sleep, workouts</li>
+        <li>Output as table, JSON, or CSV with date range filters</li>
+        <li>HTTP server with async upload (<code>202 Accepted</code> + progress polling) for Tailscale workflows</li>
+        <li>Single binary, zero CGO dependencies (<a href="https://pkg.go.dev/modernc.org/sqlite">modernc.org/sqlite</a>)</li>
+      </ul>
+    </div>
+
+    <div class="home-section">
+      <h2>Quick start</h2>
+      <ol>
+        <li>
+          <strong>Install</strong>
+          <pre><code>go install github.com/BRO3886/healthsync@latest</code></pre>
+        </li>
+        <li>
+          <strong>Export from iPhone</strong>
+          <p>Health app &rarr; Profile &rarr; Export All Health Data &rarr; save the <code>.zip</code></p>
+        </li>
+        <li>
+          <strong>Parse</strong>
+          <pre><code>healthsync parse export.zip -v</code></pre>
+        </li>
+        <li>
+          <strong>Query</strong>
+          <pre><code>healthsync query heart-rate --limit 10
+healthsync query steps --from 2024-01-01 --format json</code></pre>
+        </li>
+      </ol>
+    </div>
+
+    <div class="home-section">
+      <h2>How it works</h2>
+      <table>
+        <thead>
+          <tr><th></th><th></th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Parser</td><td>Streaming XML with DTD stripping via <code>io.Pipe</code>. Handles 500k+ records in ~30s.</td></tr>
+          <tr><td>Storage</td><td>Pure Go SQLite. WAL mode, batch inserts (1000/tx), <code>UNIQUE</code> constraints for dedup.</td></tr>
+          <tr><td>Server</td><td>Chi router. <code>POST /api/upload</code> returns <code>202</code>, parses async, poll <code>GET /api/upload/status</code>.</td></tr>
+          <tr><td>CLI</td><td>Cobra. <code>parse</code>, <code>query</code>, <code>server</code> subcommands. <code>--db</code>, <code>--format</code>, <code>--from/--to</code> flags.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{{ end }}

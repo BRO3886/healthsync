@@ -1,0 +1,12 @@
+<aside class="sidebar" id="sidebar">
+  <nav class="sidebar-nav">
+    {{ $currentPage := . }}
+    {{ range where .Site.RegularPages "Section" "docs" }}
+      {{ if ne .Title "Documentation" }}
+        <a class="sidebar-link{{ if eq $currentPage.RelPermalink .RelPermalink }} active{{ end }}" href="{{ .RelPermalink }}">
+          {{ .Title }}
+        </a>
+      {{ end }}
+    {{ end }}
+  </nav>
+</aside>
