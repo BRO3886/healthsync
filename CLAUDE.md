@@ -14,17 +14,18 @@ internal/
 
 ## Build & Test
 ```bash
-go build -o healthsync .
-go test ./... -v
+make build          # outputs bin/healthsync
+make test           # run all tests
+make release        # darwin/linux tar.gz + windows zip into bin/
 go test ./... -coverprofile=coverage.out && go tool cover -func=coverage.out
 ```
 
-## Test Coverage (2026-02-12)
+## Test Coverage (2026-02-24)
 - `internal/parser` — 86.9% (17 tests)
 - `internal/storage` — 85.5% (29 tests)
 - `internal/server` — 73.7% (17 tests)
-- `cmd/` — 0% (thin cobra wiring, no unit tests)
-- Total: 53 tests, 59.5% overall (82-87% on core packages)
+- `cmd/` — first tests added (formatCommas, 11 cases)
+- Total: 54 tests, 59.5% overall (82-87% on core packages)
 
 ## Key Technical Details
 
@@ -48,6 +49,7 @@ go test ./... -coverprofile=coverage.out && go tool cover -func=coverage.out
 - `github.com/spf13/cobra` — CLI
 - `github.com/go-chi/chi/v5` — HTTP router
 - `modernc.org/sqlite` — pure Go SQLite (no CGO)
+- `github.com/jedib0t/go-pretty/v6` — table output (query command)
 - `github.com/charmbracelet/huh` — interactive prompts (not yet used)
 
 ## Conventions
