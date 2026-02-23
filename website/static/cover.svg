@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <style>
+      .mono { font-family: ui-monospace, 'SF Mono', Menlo, monospace; }
+      .sans { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#111111"/>
+
+  <!-- Subtle grid lines -->
+  <line x1="0" y1="210" x2="1200" y2="210" stroke="#1e1e1e" stroke-width="1"/>
+  <line x1="0" y1="420" x2="1200" y2="420" stroke="#1e1e1e" stroke-width="1"/>
+  <line x1="400" y1="0" x2="400" y2="630" stroke="#1e1e1e" stroke-width="1"/>
+  <line x1="800" y1="0" x2="800" y2="630" stroke="#1e1e1e" stroke-width="1"/>
+
+  <!-- Left: branding -->
+  <!-- Logo mark -->
+  <rect x="72" y="72" width="64" height="64" rx="14" fill="#007AFF"/>
+  <text x="104" y="116" text-anchor="middle" class="mono" font-weight="700" font-size="28" fill="#fff">hs</text>
+
+  <!-- Product name -->
+  <text x="72" y="224" class="mono" font-weight="700" font-size="64" fill="#ffffff" letter-spacing="-1">healthsync</text>
+
+  <!-- Tagline -->
+  <text x="72" y="278" class="sans" font-size="20" fill="#86868b">Parse Apple Health exports into a local SQLite database.</text>
+
+  <!-- Metric badges row -->
+  <!-- Heart Rate -->
+  <rect x="72" y="318" width="148" height="34" rx="17" fill="#1c1c1e" stroke="#2c2c2e" stroke-width="1"/>
+  <circle cx="95" cy="335" r="6" fill="#FF375F"/>
+  <text x="110" y="340" class="mono" font-size="13" fill="#ebebf5">Heart Rate</text>
+
+  <!-- Steps -->
+  <rect x="232" y="318" width="100" height="34" rx="17" fill="#1c1c1e" stroke="#2c2c2e" stroke-width="1"/>
+  <circle cx="255" cy="335" r="6" fill="#30D158"/>
+  <text x="270" y="340" class="mono" font-size="13" fill="#ebebf5">Steps</text>
+
+  <!-- Sleep -->
+  <rect x="344" y="318" width="98" height="34" rx="17" fill="#1c1c1e" stroke="#2c2c2e" stroke-width="1"/>
+  <circle cx="367" cy="335" r="6" fill="#636EFF"/>
+  <text x="382" y="340" class="mono" font-size="13" fill="#ebebf5">Sleep</text>
+
+  <!-- SpO2 -->
+  <rect x="454" y="318" width="116" height="34" rx="17" fill="#1c1c1e" stroke="#2c2c2e" stroke-width="1"/>
+  <circle cx="477" cy="335" r="6" fill="#5AC8FA"/>
+  <text x="492" y="340" class="mono" font-size="13" fill="#ebebf5">Blood O₂</text>
+
+  <!-- VO2 Max -->
+  <rect x="72" y="362" width="112" height="34" rx="17" fill="#1c1c1e" stroke="#2c2c2e" stroke-width="1"/>
+  <circle cx="95" cy="379" r="6" fill="#FF9F0A"/>
+  <text x="110" y="384" class="mono" font-size="13" fill="#ebebf5">VO2 Max</text>
+
+  <!-- Workouts -->
+  <rect x="196" y="362" width="120" height="34" rx="17" fill="#1c1c1e" stroke="#2c2c2e" stroke-width="1"/>
+  <circle cx="219" cy="379" r="6" fill="#FF6961"/>
+  <text x="234" y="384" class="mono" font-size="13" fill="#ebebf5">Workouts</text>
+
+  <!-- URL -->
+  <text x="72" y="550" class="mono" font-size="18" fill="#007AFF">healthsync.sidv.dev</text>
+
+  <!-- Right: terminal window -->
+  <rect x="620" y="60" width="524" height="510" rx="12" fill="#1c1c1e" stroke="#2c2c2e" stroke-width="1"/>
+
+  <!-- Terminal title bar -->
+  <rect x="620" y="60" width="524" height="44" rx="12" fill="#2c2c2e"/>
+  <rect x="620" y="84" width="524" height="20" fill="#2c2c2e"/>
+  <!-- Traffic lights -->
+  <circle cx="652" cy="82" r="7" fill="#FF5F57"/>
+  <circle cx="676" cy="82" r="7" fill="#FFBD2E"/>
+  <circle cx="700" cy="82" r="7" fill="#28C840"/>
+  <!-- Title -->
+  <text x="882" y="88" text-anchor="middle" class="mono" font-size="13" fill="#86868b">zsh</text>
+
+  <!-- Terminal content -->
+  <!-- line 1: parse command -->
+  <text x="652" y="142" class="mono" font-size="14" fill="#86868b">$ </text>
+  <text x="672" y="142" class="mono" font-size="14" fill="#ebebf5">healthsync parse export.zip</text>
+
+  <!-- line 2: parsing... -->
+  <text x="652" y="166" class="mono" font-size="14" fill="#86868b">Parsing export.zip...</text>
+
+  <!-- line 3: spinner line -->
+  <text x="652" y="190" class="mono" font-size="14" fill="#007AFF">  ⣾ </text>
+  <text x="686" y="190" class="mono" font-size="14" fill="#ebebf5">542,705 records · 1,021 workouts · 3,812/s · 29s</text>
+
+  <!-- line 4: blank -->
+  <!-- line 5: result -->
+  <text x="652" y="226" class="mono" font-size="14" fill="#ebebf5">  Records:  </text>
+  <text x="756" y="226" class="mono" font-size="14" fill="#30D158">542,705</text>
+  <text x="652" y="248" class="mono" font-size="14" fill="#ebebf5">  Workouts: </text>
+  <text x="756" y="248" class="mono" font-size="14" fill="#30D158">1,021</text>
+  <text x="652" y="270" class="mono" font-size="14" fill="#ebebf5">  Duration: </text>
+  <text x="756" y="270" class="mono" font-size="14" fill="#86868b">29.06s</text>
+
+  <!-- divider -->
+  <line x1="652" y1="292" x2="1120" y2="292" stroke="#2c2c2e" stroke-width="1"/>
+
+  <!-- query command -->
+  <text x="652" y="318" class="mono" font-size="14" fill="#86868b">$ </text>
+  <text x="672" y="318" class="mono" font-size="14" fill="#ebebf5">healthsync query heart-rate --limit 3</text>
+
+  <!-- table output -->
+  <text x="652" y="346" class="mono" font-size="13" fill="#555555">┌────────────┬───────┬─────────────────────┐</text>
+  <text x="652" y="364" class="mono" font-size="13" fill="#555555">│ </text>
+  <text x="666" y="364" class="mono" font-size="13" fill="#86868b">SOURCE      </text>
+  <text x="762" y="364" class="mono" font-size="13" fill="#555555">│ </text>
+  <text x="776" y="364" class="mono" font-size="13" fill="#86868b">VALUE </text>
+  <text x="828" y="364" class="mono" font-size="13" fill="#555555">│ </text>
+  <text x="842" y="364" class="mono" font-size="13" fill="#86868b">DATE                </text>
+  <text x="974" y="364" class="mono" font-size="13" fill="#555555">│</text>
+  <text x="652" y="382" class="mono" font-size="13" fill="#555555">├────────────┼───────┼─────────────────────┤</text>
+  <text x="652" y="400" class="mono" font-size="13" fill="#555555">│ </text>
+  <text x="666" y="400" class="mono" font-size="13" fill="#ebebf5">Apple Watch </text>
+  <text x="762" y="400" class="mono" font-size="13" fill="#555555">│ </text>
+  <text x="776" y="400" class="mono" font-size="13" fill="#ebebf5">72 BPM</text>
+  <text x="828" y="400" class="mono" font-size="13" fill="#555555">│ </text>
+  <text x="842" y="400" class="mono" font-size="13" fill="#ebebf5">2026-02-24 08:11 </text>
+  <text x="974" y="400" class="mono" font-size="13" fill="#555555">│</text>
+  <text x="652" y="418" class="mono" font-size="13" fill="#555555">│ </text>
+  <text x="666" y="418" class="mono" font-size="13" fill="#ebebf5">Apple Watch </text>
+  <text x="762" y="418" class="mono" font-size="13" fill="#555555">│ </text>
+  <text x="776" y="418" class="mono" font-size="13" fill="#ebebf5">68 BPM</text>
+  <text x="828" y="418" class="mono" font-size="13" fill="#555555">│ </text>
+  <text x="842" y="418" class="mono" font-size="13" fill="#ebebf5">2026-02-24 07:58 </text>
+  <text x="974" y="418" class="mono" font-size="13" fill="#555555">│</text>
+  <text x="652" y="436" class="mono" font-size="13" fill="#555555">│ </text>
+  <text x="666" y="436" class="mono" font-size="13" fill="#ebebf5">Apple Watch </text>
+  <text x="762" y="436" class="mono" font-size="13" fill="#555555">│ </text>
+  <text x="776" y="436" class="mono" font-size="13" fill="#ebebf5">75 BPM</text>
+  <text x="828" y="436" class="mono" font-size="13" fill="#555555">│ </text>
+  <text x="842" y="436" class="mono" font-size="13" fill="#ebebf5">2026-02-24 07:32 </text>
+  <text x="974" y="436" class="mono" font-size="13" fill="#555555">│</text>
+  <text x="652" y="454" class="mono" font-size="13" fill="#555555">└────────────┴───────┴─────────────────────┘</text>
+
+  <!-- prompt after -->
+  <text x="652" y="490" class="mono" font-size="14" fill="#86868b">$ </text>
+  <rect x="672" y="476" width="10" height="18" rx="1" fill="#007AFF" opacity="0.8"/>
+</svg>
