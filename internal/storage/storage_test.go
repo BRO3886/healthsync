@@ -470,6 +470,204 @@ func TestValidTableNames(t *testing.T) {
 
 // --- TableNameMap ---
 
+// --- Steps Dedup ---
+
+func TestDeduplicateSteps_NoOverlap(t *testing.T) {
+	records := []stepsRecord{
+		{source: "iPhone", startDate: "2024-01-01 08:00:00", endDate: "2024-01-01 08:15:00", value: 100},
+		{source: "iPhone", startDate: "2024-01-01 08:15:00", endDate: "2024-01-01 08:30:00", value: 200},
+	}
+	result := deduplicateSteps(records)
+	if len(result) != 2 {
+		t.Errorf("expected 2 records, got %d", len(result))
+	}
+	total := 0.0
+	for _, r := range result {
+		total += r.value
+	}
+	if total != 300 {
+		t.Errorf("expected total 300, got %.0f", total)
+	}
+}
+
+func TestDeduplicateSteps_OverlapSameSource(t *testing.T) {
+	// Two records from the same source overlap — first wins
+	records := []stepsRecord{
+		{source: "iPhone", startDate: "2024-01-01 08:00:00", endDate: "2024-01-01 08:20:00", value: 150},
+		{source: "iPhone", startDate: "2024-01-01 08:10:00", endDate: "2024-01-01 08:30:00", value: 200},
+	}
+	result := deduplicateSteps(records)
+	if len(result) != 1 {
+		t.Errorf("expected 1 record, got %d", len(result))
+	}
+	if result[0].value != 150 {
+		t.Errorf("expected first-wins value 150, got %.0f", result[0].value)
+	}
+}
+
+func TestDeduplicateSteps_OverlapWatchBeatsIPhone(t *testing.T) {
+	// Watch and iPhone overlap — Watch should win
+	records := []stepsRecord{
+		{source: "Sid's iPhone", startDate: "2024-01-01 08:00:00", endDate: "2024-01-01 08:30:00", value: 500},
+		{source: "Sid's Apple Watch", startDate: "2024-01-01 08:05:00", endDate: "2024-01-01 08:25:00", value: 300},
+	}
+	result := deduplicateSteps(records)
+	if len(result) != 1 {
+		t.Errorf("expected 1 record, got %d", len(result))
+	}
+	if result[0].value != 300 {
+		t.Errorf("expected Watch value 300, got %.0f", result[0].value)
+	}
+}
+
+func TestDeduplicateSteps_OverlapIPhoneBeatsThirdParty(t *testing.T) {
+	records := []stepsRecord{
+		{source: "Pedometer++", startDate: "2024-01-01 08:00:00", endDate: "2024-01-01 08:30:00", value: 600},
+		{source: "Sid's iPhone", startDate: "2024-01-01 08:05:00", endDate: "2024-01-01 08:25:00", value: 400},
+	}
+	result := deduplicateSteps(records)
+	if len(result) != 1 {
+		t.Errorf("expected 1 record, got %d", len(result))
+	}
+	if result[0].value != 400 {
+		t.Errorf("expected iPhone value 400, got %.0f", result[0].value)
+	}
+}
+
+func TestDeduplicateSteps_MixedOverlapAndNon(t *testing.T) {
+	records := []stepsRecord{
+		{source: "Sid's Apple Watch", startDate: "2024-01-01 08:00:00", endDate: "2024-01-01 08:15:00", value: 200},
+		{source: "Sid's iPhone", startDate: "2024-01-01 08:05:00", endDate: "2024-01-01 08:20:00", value: 300},
+		{source: "Sid's Apple Watch", startDate: "2024-01-01 09:00:00", endDate: "2024-01-01 09:15:00", value: 150},
+	}
+	result := deduplicateSteps(records)
+	if len(result) != 2 {
+		t.Errorf("expected 2 records, got %d", len(result))
+	}
+	total := 0.0
+	for _, r := range result {
+		total += r.value
+	}
+	// Watch 200 (beats iPhone 300) + Watch 150 = 350
+	if total != 350 {
+		t.Errorf("expected total 350, got %.0f", total)
+	}
+}
+
+func TestDeduplicateSteps_AdjacentNotOverlapping(t *testing.T) {
+	// end_date == start_date means no overlap (intervals are [start, end))
+	records := []stepsRecord{
+		{source: "iPhone", startDate: "2024-01-01 08:00:00", endDate: "2024-01-01 08:15:00", value: 100},
+		{source: "Apple Watch", startDate: "2024-01-01 08:15:00", endDate: "2024-01-01 08:30:00", value: 200},
+	}
+	result := deduplicateSteps(records)
+	if len(result) != 2 {
+		t.Errorf("expected 2 records (adjacent, not overlapping), got %d", len(result))
+	}
+}
+
+func TestQueryStepsDailyTotal_Integration(t *testing.T) {
+	db := tempDB(t)
+	cols := []string{"source_name", "start_date", "end_date", "value", "unit"}
+
+	// Day 1: Watch and iPhone overlap
+	records := [][]any{
+		{"Sid's Apple Watch", "2024-01-01 08:00:00", "2024-01-01 08:15:00", 200.0, "count"},
+		{"Sid's iPhone", "2024-01-01 08:05:00", "2024-01-01 08:20:00", 350.0, "count"},
+		{"Sid's Apple Watch", "2024-01-01 09:00:00", "2024-01-01 09:15:00", 150.0, "count"},
+		// Day 2: single source
+		{"Sid's Apple Watch", "2024-01-02 10:00:00", "2024-01-02 10:15:00", 500.0, "count"},
+	}
+	_, err := db.BatchInsertRecords("steps", cols, records)
+	if err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	results, err := db.QueryStepsDailyTotal(QueryParams{Table: "steps"})
+	if err != nil {
+		t.Fatalf("QueryStepsDailyTotal: %v", err)
+	}
+
+	if len(results) != 2 {
+		t.Fatalf("expected 2 days, got %d", len(results))
+	}
+
+	// Day 1: Watch 200 wins over iPhone 350, plus Watch 150 = 350
+	if results[0]["date"] != "2024-01-01" {
+		t.Errorf("expected date 2024-01-01, got %v", results[0]["date"])
+	}
+	if results[0]["total"] != "350" {
+		t.Errorf("expected day 1 total 350, got %v", results[0]["total"])
+	}
+
+	// Day 2: 500
+	if results[1]["date"] != "2024-01-02" {
+		t.Errorf("expected date 2024-01-02, got %v", results[1]["date"])
+	}
+	if results[1]["total"] != "500" {
+		t.Errorf("expected day 2 total 500, got %v", results[1]["total"])
+	}
+}
+
+func TestQueryStepsDailyTotal_WithDateFilters(t *testing.T) {
+	db := tempDB(t)
+	cols := []string{"source_name", "start_date", "end_date", "value", "unit"}
+	records := [][]any{
+		{"Watch", "2024-01-01 08:00:00", "2024-01-01 08:15:00", 100.0, "count"},
+		{"Watch", "2024-01-02 08:00:00", "2024-01-02 08:15:00", 200.0, "count"},
+		{"Watch", "2024-01-03 08:00:00", "2024-01-03 08:15:00", 300.0, "count"},
+	}
+	db.BatchInsertRecords("steps", cols, records)
+
+	results, err := db.QueryStepsDailyTotal(QueryParams{
+		Table: "steps",
+		From:  "2024-01-02",
+		To:    "2024-01-02 23:59:59",
+	})
+	if err != nil {
+		t.Fatalf("QueryStepsDailyTotal: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 day, got %d", len(results))
+	}
+	if results[0]["total"] != "200" {
+		t.Errorf("expected 200, got %v", results[0]["total"])
+	}
+}
+
+func TestQueryStepsDailyTotal_Empty(t *testing.T) {
+	db := tempDB(t)
+	results, err := db.QueryStepsDailyTotal(QueryParams{Table: "steps"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(results) != 0 {
+		t.Errorf("expected 0 results, got %d", len(results))
+	}
+}
+
+func TestSourcePriority(t *testing.T) {
+	tests := []struct {
+		source   string
+		expected int
+	}{
+		{"Sid's Apple Watch", 2},
+		{"Apple Watch Series 9", 2},
+		{"Sid's iPhone", 1},
+		{"iPhone 15 Pro", 1},
+		{"Pedometer++", 0},
+		{"MyFitnessPal", 0},
+	}
+	for _, tt := range tests {
+		got := sourcePriority(tt.source)
+		if got != tt.expected {
+			t.Errorf("sourcePriority(%q) = %d, want %d", tt.source, got, tt.expected)
+		}
+	}
+}
+
+// --- TableNameMap ---
+
 func TestTableNameMap_AllCLINamesResolve(t *testing.T) {
 	for _, name := range ValidTableNames() {
 		if _, ok := TableNameMap[name]; !ok {

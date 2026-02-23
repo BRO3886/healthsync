@@ -7,8 +7,9 @@ import (
 	"os"
 	"sort"
 	"strings"
-	"text/tabwriter"
 
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 
 	"github.com/BRO3886/healthsync/internal/storage"
@@ -19,6 +20,7 @@ var (
 	queryTo     string
 	queryLimit  int
 	queryFormat string
+	queryTotal  bool
 )
 
 var queryCmd = &cobra.Command{
@@ -36,6 +38,7 @@ func init() {
 	queryCmd.Flags().StringVar(&queryTo, "to", "", "filter records to this date (inclusive, e.g. 2024-12-31)")
 	queryCmd.Flags().IntVar(&queryLimit, "limit", 50, "maximum number of records to return")
 	queryCmd.Flags().StringVar(&queryFormat, "format", "table", "output format: table, json, csv")
+	queryCmd.Flags().BoolVar(&queryTotal, "total", false, "show deduplicated daily totals (steps only)")
 	rootCmd.AddCommand(queryCmd)
 }
 
@@ -44,6 +47,10 @@ func runQuery(cmd *cobra.Command, args []string) error {
 
 	if _, ok := storage.TableNameMap[table]; !ok {
 		return fmt.Errorf("unknown table: %q (valid: %s)", table, strings.Join(storage.ValidTableNames(), ", "))
+	}
+
+	if queryTotal && table != "steps" {
+		return fmt.Errorf("--total is only supported for the steps table")
 	}
 
 	db, err := storage.Open(dbPath)
@@ -59,7 +66,12 @@ func runQuery(cmd *cobra.Command, args []string) error {
 		Limit: queryLimit,
 	}
 
-	rows, err := db.QueryRows(params)
+	var rows []map[string]interface{}
+	if queryTotal {
+		rows, err = db.QueryStepsDailyTotal(params)
+	} else {
+		rows, err = db.QueryRows(params)
+	}
 	if err != nil {
 		return err
 	}
@@ -122,43 +134,43 @@ func outputTable(rows []map[string]any) error {
 	}
 	columns = filtered
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	t := table.NewWriter()
+	t.SetOutputMirror(os.Stdout)
+	t.SetStyle(table.StyleLight)
+	t.Style().Format.Header = text.FormatUpper
+	t.Style().Options.SeparateRows = false
 
-	// Header
+	colCfgs := make([]table.ColumnConfig, len(columns))
 	for i, col := range columns {
-		if i > 0 {
-			fmt.Fprint(w, "\t")
+		colCfgs[i] = table.ColumnConfig{
+			Name:        strings.ToUpper(col),
+			Align:       text.AlignLeft,
+			AlignHeader: text.AlignLeft,
 		}
-		fmt.Fprint(w, strings.ToUpper(col))
 	}
-	fmt.Fprintln(w)
+	t.SetColumnConfigs(colCfgs)
 
-	// Separator
+	header := make(table.Row, len(columns))
 	for i, col := range columns {
-		if i > 0 {
-			fmt.Fprint(w, "\t")
-		}
-		fmt.Fprint(w, strings.Repeat("-", len(col)+2))
+		header[i] = strings.ToUpper(col)
 	}
-	fmt.Fprintln(w)
+	t.AppendHeader(header)
 
-	// Rows
 	for _, row := range rows {
+		r := make(table.Row, len(columns))
 		for i, col := range columns {
-			if i > 0 {
-				fmt.Fprint(w, "\t")
-			}
 			val := row[col]
 			if val == nil {
-				fmt.Fprint(w, "")
+				r[i] = ""
 			} else {
-				fmt.Fprintf(w, "%v", val)
+				r[i] = fmt.Sprintf("%v", val)
 			}
 		}
-		fmt.Fprintln(w)
+		t.AppendRow(r)
 	}
 
-	return w.Flush()
+	t.Render()
+	return nil
 }
 
 func sortedKeys(m map[string]any) []string {

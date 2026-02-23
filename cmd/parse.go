@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -53,12 +54,23 @@ func runParse(cmd *cobra.Command, args []string) error {
 
 	start := time.Now()
 	lastLog := time.Now()
+	spinFrames := []string{"⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"}
+	frame := 0
 
 	progress := func(records int64, workouts int64) {
-		fmt.Fprintf(os.Stderr, "\r  Records: %d | Workouts: %d", records, workouts)
+		spin := spinFrames[frame%len(spinFrames)]
+		frame++
+		elapsed := time.Since(start).Round(time.Second)
+		rate := float64(records+workouts) / time.Since(start).Seconds()
+		fmt.Fprintf(os.Stderr, "\r  %s %s records · %s workouts · %.0f/s · %s   ",
+			spin,
+			formatCommas(records),
+			formatCommas(workouts),
+			rate,
+			elapsed,
+		)
 		if verbose && time.Since(lastLog) > 5*time.Second {
 			elapsed := time.Since(start).Round(time.Millisecond)
-			rate := float64(records+workouts) / time.Since(start).Seconds()
 			log.Printf("[verbose] progress: %d records, %d workouts (%.0f/s, elapsed %s)", records, workouts, rate, elapsed)
 			lastLog = time.Now()
 		}
@@ -75,9 +87,9 @@ func runParse(cmd *cobra.Command, args []string) error {
 
 	elapsed := time.Since(start)
 
-	fmt.Fprintf(os.Stderr, "\r")
-	fmt.Printf("  Records: %d\n", result.Total)
-	fmt.Printf("  Workouts: %d\n", result.Workouts)
+	fmt.Fprintf(os.Stderr, "\r\033[2K") // clear the spinner line
+	fmt.Printf("  Records:  %s\n", formatCommas(result.Total))
+	fmt.Printf("  Workouts: %s\n", formatCommas(result.Workouts))
 	fmt.Printf("  Duration: %s\n\n", elapsed.Round(time.Millisecond))
 
 	if verbose {
@@ -99,4 +111,17 @@ func runParse(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+// formatCommas formats an int64 with thousands separators (e.g. 1234567 → "1,234,567").
+func formatCommas(n int64) string {
+	s := strconv.FormatInt(n, 10)
+	out := make([]byte, 0, len(s)+(len(s)-1)/3)
+	for i, c := range s {
+		if i > 0 && (len(s)-i)%3 == 0 {
+			out = append(out, ',')
+		}
+		out = append(out, byte(c))
+	}
+	return string(out)
 }
