@@ -205,6 +205,10 @@ func parseXML(r io.Reader, db *storage.DB, progress ProgressFunc) (*ParseResult,
 			workoutBuf = append(workoutBuf, row)
 			workoutCount++
 
+			if progress != nil {
+				progress(recordCount, workoutCount)
+			}
+
 			if len(workoutBuf) >= batchSize {
 				if err := flushWorkouts(); err != nil {
 					return nil, fmt.Errorf("flushing workouts: %w", err)
