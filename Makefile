@@ -6,8 +6,6 @@ COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
 DATE    ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 LDFLAGS  = -ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE)"
 
-PLATFORMS := darwin/amd64 darwin/arm64 linux/amd64 linux/arm64 windows/amd64 windows/arm64
-
 build: ## Build the binary
 	@mkdir -p bin
 	go build $(LDFLAGS) -o bin/$(BINARY) .
@@ -35,15 +33,16 @@ tidy: ## Tidy go modules
 lint: ## Run go vet
 	go vet ./...
 
-release: ## Build cross-platform binaries for release
+release: ## Build release tarballs for GitHub upload (darwin arm64 + amd64)
 	@mkdir -p bin
-	@for platform in $(PLATFORMS); do \
-		GOOS=$${platform%/*} GOARCH=$${platform#*/} ; \
-		output=bin/$(BINARY)-$${GOOS}-$${GOARCH} ; \
-		if [ "$${GOOS}" = "windows" ]; then output=$${output}.exe; fi ; \
-		echo "Building $${output}..." ; \
-		GOOS=$${GOOS} GOARCH=$${GOARCH} go build $(LDFLAGS) -o $${output} . || exit 1 ; \
+	@for arch in arm64 amd64; do \
+		echo "Building $(BINARY)-darwin-$$arch..."; \
+		GOOS=darwin GOARCH=$$arch go build $(LDFLAGS) -o bin/$(BINARY) . || exit 1; \
+		chmod +x bin/$(BINARY); \
+		tar -czf bin/$(BINARY)-darwin-$$arch.tar.gz -C bin $(BINARY); \
+		rm bin/$(BINARY); \
 	done
+	@echo "Upload bin/$(BINARY)-darwin-{arm64,amd64}.tar.gz to GitHub Releases"
 
 website: ## Build the Hugo website
 	cd website && hugo --minify
