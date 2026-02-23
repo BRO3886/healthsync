@@ -33,16 +33,23 @@ tidy: ## Tidy go modules
 lint: ## Run go vet
 	go vet ./...
 
-release: ## Build release tarballs for GitHub upload (darwin arm64 + amd64)
+release: ## Build release tarballs for GitHub upload (darwin/linux arm64+amd64, windows arm64+amd64)
 	@mkdir -p bin
-	@for arch in arm64 amd64; do \
-		echo "Building $(BINARY)-darwin-$$arch..."; \
-		GOOS=darwin GOARCH=$$arch go build $(LDFLAGS) -o bin/$(BINARY) . || exit 1; \
-		chmod +x bin/$(BINARY); \
-		tar -czf bin/$(BINARY)-darwin-$$arch.tar.gz -C bin $(BINARY); \
-		rm bin/$(BINARY); \
+	@for platform in darwin/arm64 darwin/amd64 linux/arm64 linux/amd64 windows/arm64 windows/amd64; do \
+		os=$${platform%/*}; arch=$${platform#*/}; \
+		echo "Building $(BINARY)-$$os-$$arch..."; \
+		if [ "$$os" = "windows" ]; then \
+			GOOS=$$os GOARCH=$$arch go build $(LDFLAGS) -o bin/$(BINARY).exe . || exit 1; \
+			zip -j bin/$(BINARY)-$$os-$$arch.zip bin/$(BINARY).exe; \
+			rm bin/$(BINARY).exe; \
+		else \
+			GOOS=$$os GOARCH=$$arch go build $(LDFLAGS) -o bin/$(BINARY) . || exit 1; \
+			chmod +x bin/$(BINARY); \
+			tar -czf bin/$(BINARY)-$$os-$$arch.tar.gz -C bin $(BINARY); \
+			rm bin/$(BINARY); \
+		fi; \
 	done
-	@echo "Upload bin/$(BINARY)-darwin-{arm64,amd64}.tar.gz to GitHub Releases"
+	@echo "Done. Upload contents of bin/ to GitHub Releases"
 
 website: ## Build the Hugo website
 	cd website && hugo --minify
