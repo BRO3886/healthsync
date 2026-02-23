@@ -10,6 +10,9 @@ internal/
   parser/      — Streaming XML parser with DTD stripping, zip support
   storage/     — SQLite schema, batch inserts, query helpers
   server/      — Chi HTTP server with async upload
+scripts/       — install.sh (served at healthsync.sidv.dev/install)
+website/       — Hugo site (custom theme, no npm)
+  static/install — copy of scripts/install.sh, served at /install
 ```
 
 ## Build & Test
@@ -51,6 +54,12 @@ go test ./... -coverprofile=coverage.out && go tool cover -func=coverage.out
 - `modernc.org/sqlite` — pure Go SQLite (no CGO)
 - `github.com/jedib0t/go-pretty/v6` — table output (query command)
 - `github.com/charmbracelet/huh` — interactive prompts (not yet used)
+
+## Install Script
+- `scripts/install.sh` — curl installer, supports macOS and Linux (arm64 + amd64)
+- Copied verbatim to `website/static/install` (Hugo serves it at `/install`, no extension)
+- No agent skill prompt (healthsync has no `skills` subcommand)
+- Pattern: pre-flight OS/arch check → resolve latest GitHub release → download tar.gz → extract → install to `/usr/local/bin` (sudo if needed)
 
 ## Conventions
 - Conventional commits

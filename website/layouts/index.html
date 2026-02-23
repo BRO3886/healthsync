@@ -19,7 +19,7 @@
       <span class="metric-badge"><span class="badge-dot badge-dot-workout"></span>Workouts</span>
     </div>
 
-    <pre class="home-code"><code>$ go install github.com/BRO3886/healthsync@latest
+    <pre class="home-code"><code>$ curl -fsSL https://healthsync.sidv.dev/install | bash
 
 $ healthsync parse export.zip
 Parsed 540,110 records and 1,011 workouts in 30.6s
@@ -50,12 +50,20 @@ $ healthsync server --port 8080</code></pre>
     </div>
 
     <div class="home-section">
+      <h2>Install</h2>
+      <p><strong>macOS / Linux</strong> &mdash; one-liner installer:</p>
+      <pre><code>curl -fsSL https://healthsync.sidv.dev/install | bash</code></pre>
+      <p><strong>Go</strong> &mdash; install from source via the Go toolchain:</p>
+      <pre><code>go install github.com/BRO3886/healthsync@latest</code></pre>
+      <p><strong>Manual</strong> &mdash; download a pre-built binary from <a href="https://github.com/BRO3886/healthsync/releases/latest">GitHub Releases</a> (macOS and Linux, arm64 and amd64):</p>
+      <pre><code>tar -xzf healthsync-darwin-arm64.tar.gz
+sudo mv healthsync /usr/local/bin/</code></pre>
+      <p class="install-note">Windows users: download <code>healthsync-windows-amd64.zip</code> or <code>healthsync-windows-arm64.zip</code> from <a href="https://github.com/BRO3886/healthsync/releases/latest">GitHub Releases</a> and add the binary to your <code>PATH</code>.</p>
+    </div>
+
+    <div class="home-section">
       <h2>Quick start</h2>
       <ol>
-        <li>
-          <strong>Install</strong>
-          <pre><code>go install github.com/BRO3886/healthsync@latest</code></pre>
-        </li>
         <li>
           <strong>Export from iPhone</strong>
           <p>Health app &rarr; Profile &rarr; Export All Health Data &rarr; save the <code>.zip</code></p>

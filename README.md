@@ -6,13 +6,8 @@ Sync Apple Health export data into a local queryable SQLite database. Two modes:
 
 ## Install
 
-Download a pre-built binary from [GitHub Releases](https://github.com/BRO3886/healthsync/releases):
-
 ```bash
-# macOS (Apple Silicon)
-curl -L https://github.com/BRO3886/healthsync/releases/latest/download/healthsync-darwin-arm64 -o healthsync
-chmod +x healthsync
-sudo mv healthsync /usr/local/bin/
+curl -fsSL https://healthsync.sidv.dev/install | bash
 ```
 
 Or install with Go:
@@ -20,6 +15,8 @@ Or install with Go:
 ```bash
 go install github.com/BRO3886/healthsync@latest
 ```
+
+Or download a pre-built binary from [GitHub Releases](https://github.com/BRO3886/healthsync/releases) (macOS and Linux, arm64 and amd64).
 
 Or build from source (requires Go 1.21+):
 

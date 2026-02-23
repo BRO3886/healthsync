@@ -471,6 +471,17 @@ blockquote p:last-child { margin-bottom: 0; }
 .home-section ol > li pre { margin-bottom: 0; }
 .home-section ol > li p   { margin-bottom: 0; }
 
+/* Install note (Windows callout) */
+.install-note {
+  font-size: 0.85rem !important;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 0.6rem 0.85rem;
+  margin-top: 0.5rem;
+}
+
 /* How it works table */
 .home-section table th:first-child { width: 80px; font-weight: 500; color: var(--text-secondary); }
 .home-section table th { border-bottom: none; padding: 0; }

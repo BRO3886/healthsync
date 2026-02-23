@@ -9,18 +9,44 @@ toc: true
 
 ## Installation
 
-### From source
+### Quick install (recommended)
 
 ```bash
-git clone git@github.com:BRO3886/healthsync.git
-cd healthsync
-go build -o healthsync .
+curl -fsSL https://healthsync.sidv.dev/install | bash
+```
+
+Downloads the latest release for your platform (macOS and Linux, arm64 and amd64) and installs to `/usr/local/bin`.
+
+### Manual download
+
+Download a pre-built binary for your platform from [GitHub Releases](https://github.com/BRO3886/healthsync/releases/latest):
+
+| Platform | Architecture | Download |
+|----------|-------------|---------|
+| macOS | Apple Silicon | `healthsync-darwin-arm64.tar.gz` |
+| macOS | Intel | `healthsync-darwin-amd64.tar.gz` |
+| Linux | ARM64 | `healthsync-linux-arm64.tar.gz` |
+| Linux | x86_64 | `healthsync-linux-amd64.tar.gz` |
+
+Extract and install:
+
+```bash
+tar -xzf healthsync-darwin-arm64.tar.gz
+sudo mv healthsync /usr/local/bin/
 ```
 
 ### With `go install`
 
 ```bash
 go install github.com/BRO3886/healthsync@latest
+```
+
+### From source
+
+```bash
+git clone git@github.com:BRO3886/healthsync.git
+cd healthsync
+go build -o healthsync .
 ```
 
 ## Export your Apple Health data
