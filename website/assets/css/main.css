@@ -512,8 +512,43 @@ blockquote p:last-child { margin-bottom: 0; }
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* Nav mobile menu overlay (non-docs pages) */
+.nav-mobile-menu {
+  display: none;
+}
+
 @media (max-width: 768px) {
   .nav-hamburger { display: flex; }
+
+  .nav-mobile-menu {
+    display: none;
+    position: fixed;
+    top: var(--nav-height);
+    left: 0; right: 0; bottom: 0;
+    width: 100%;
+    background: var(--bg);
+    z-index: 90;
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .nav-mobile-menu.open {
+    display: flex;
+    animation: slideDown 0.2s ease;
+  }
+  .nav-mobile-menu a {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem 0.5rem;
+    color: var(--text);
+    font-size: 1rem;
+    border-bottom: 1px solid var(--border-subtle);
+    transition: color var(--ease);
+  }
+  .nav-mobile-menu a:hover { color: var(--accent); text-decoration: none; }
+  .nav-mobile-menu a:last-child { border-bottom: none; }
 
   .sidebar {
     display: none;

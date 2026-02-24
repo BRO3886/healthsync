@@ -12,23 +12,26 @@
   });
 })();
 
-// Mobile sidebar toggle + close on outside click
+// Mobile menu toggle + close on outside click
+// On docs pages: toggles #sidebar; on all other pages: toggles #nav-mobile-menu
 (function () {
   var hamburger = document.getElementById("nav-hamburger");
-  var sidebar = document.getElementById("sidebar");
-  if (!hamburger || !sidebar) return;
+  if (!hamburger) return;
+
+  var menu = document.getElementById("sidebar") || document.getElementById("nav-mobile-menu");
+  if (!menu) return;
 
   hamburger.addEventListener("click", function () {
-    sidebar.classList.toggle("open");
+    menu.classList.toggle("open");
   });
 
   document.addEventListener("click", function (e) {
     if (
-      sidebar.classList.contains("open") &&
-      !sidebar.contains(e.target) &&
+      menu.classList.contains("open") &&
+      !menu.contains(e.target) &&
       !hamburger.contains(e.target)
     ) {
-      sidebar.classList.remove("open");
+      menu.classList.remove("open");
     }
   });
 })();
