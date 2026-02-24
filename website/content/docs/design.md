@@ -11,21 +11,26 @@ toc: true
 
 ```
 healthsync/
-├── cmd/                   # Cobra CLI commands
-│   ├── root.go            # Root command, --db flag
-│   ├── parse.go           # Parse command with verbose logging
-│   ├── query.go           # Query with format options
-│   └── server.go          # HTTP server command
+├── cmd/                       # Cobra CLI commands
+│   ├── root.go                # Root command, --db flag
+│   ├── parse.go               # Parse command with verbose logging
+│   ├── query.go               # Query with format options
+│   ├── server.go              # HTTP server command
+│   ├── skills.go              # Skills install/uninstall/status
+│   ├── skills_embed.go        # go:embed for embedded skill files
+│   └── skills/healthsync/     # Embedded skill content (markdown docs)
 ├── internal/
-│   ├── parser/            # Streaming XML parser
-│   │   ├── types.go       # Record/Workout structs
-│   │   └── xml.go         # DTD stripping, XML decode, zip support
-│   ├── storage/           # SQLite layer
-│   │   ├── sqlite.go      # DB init, schema, batch insert
-│   │   └── queries.go     # Query helpers, table name mapping
-│   └── server/            # HTTP server
-│       ├── server.go      # Chi router, graceful shutdown
-│       └── handlers.go    # Upload, status, query endpoints
+│   ├── parser/                # Streaming XML parser
+│   │   ├── types.go           # Record/Workout structs
+│   │   └── xml.go             # DTD stripping, XML decode, zip support
+│   ├── storage/               # SQLite layer
+│   │   ├── sqlite.go          # DB init, schema, batch insert
+│   │   └── queries.go         # Query helpers, table name mapping
+│   ├── server/                # HTTP server
+│   │   ├── server.go          # Chi router, graceful shutdown
+│   │   └── handlers.go        # Upload, status, query endpoints
+│   └── skills/                # Generic skill management package
+│       └── skills.go          # Install, Uninstall, DetectAgents, version tracking
 └── main.go
 ```
 
@@ -66,6 +71,29 @@ The HTTP server returns `202 Accepted` immediately and parses in a background go
 - **`synchronous=NORMAL`** — Good performance with WAL
 - **Pure Go driver** — `modernc.org/sqlite` requires no CGO, simplifying cross-compilation
 
+## Agent skills
+
+The `healthsync skills install` command writes documentation files to the AI agent's skill directory. The skill content is embedded directly in the binary using `go:embed`, so no network access or external files are needed at install time.
+
+```go
+//go:embed skills/healthsync
+var EmbeddedSkills embed.FS
+```
+
+The `internal/skills` package provides a generic implementation shared with other tools (rem, ical). It handles:
+
+- **Install** — copies embedded files to the target directory, writes a `.healthsync-version` file for update detection
+- **Uninstall** — removes the skill directory
+- **DetectAgents** — checks which agent directories exist on the system for smart preselection
+- **Version tracking** — compares installed version against the current binary version to detect outdated installs
+
+Supported agent targets:
+
+| Key | Directory | Compatible agents |
+|-----|-----------|-------------------|
+| `claude` | `~/.claude/skills/healthsync/` | Claude Code, Copilot, Cursor, OpenCode, Augment |
+| `codex` | `~/.agents/skills/healthsync/` | Codex CLI, Copilot, Windsurf, OpenCode, Augment |
+
 ## Dependencies
 
 | Package | Purpose |
@@ -73,3 +101,6 @@ The HTTP server returns `202 Accepted` immediately and parses in a background go
 | `github.com/spf13/cobra` | CLI framework |
 | `github.com/go-chi/chi/v5` | HTTP router |
 | `modernc.org/sqlite` | Pure Go SQLite driver |
+| `github.com/jedib0t/go-pretty/v6` | Table output with unicode box-drawing borders |
+| `github.com/charmbracelet/huh` | Interactive terminal prompts (skills agent picker) |
+| `github.com/fatih/color` | Colored terminal output |

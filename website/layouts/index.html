@@ -3,7 +3,7 @@
   <div class="container">
     <div class="home-hero">
       <h1>healthsync</h1>
-      <p class="home-desc">Parse Apple Health exports into a local SQLite database.<br>Query from the CLI, serve over HTTP, or sync from iPhone via Tailscale.</p>
+      <p class="home-desc">Your Apple Health data, locally stored and queryable by AI agents.<br>Parse exports into SQLite. Query from the CLI, or let your coding agent ask the questions.</p>
       <div class="home-links">
         <a href="/docs/getting-started/">Get Started</a>
         <a href="https://github.com/BRO3886/healthsync">GitHub</a>
@@ -22,29 +22,45 @@
     <pre class="home-code"><code>$ curl -fsSL https://healthsync.sidv.dev/install | bash
 
 $ healthsync parse export.zip
-Parsed 540,110 records and 1,011 workouts in 30.6s
+  ⣾ 540,110 records · 1,011 workouts · 18,432/s · 30s
+  Records:  540,110
+  Workouts: 1,011
+  Duration: 30.621s
 
 $ healthsync query heart-rate --limit 3
-┌────────┬───────┬─────────────────────────┐
-│ Source │ BPM   │ Date                    │
-├────────┼───────┼─────────────────────────┤
-│ Watch  │ 72    │ 2026-02-12 19:11:31     │
-│ Watch  │ 68    │ 2026-02-12 19:06:22     │
-│ Watch  │ 75    │ 2026-02-12 18:58:14     │
-└────────┴───────┴─────────────────────────┘
+┌──────────────────────────┬───────┬──────────────────────────────┐
+│ SOURCE_NAME              │ VALUE │ START_DATE                   │
+├──────────────────────────┼───────┼──────────────────────────────┤
+│ Siddhartha's Apple Watch │ 72    │ 2026-02-12 19:11:31 +0530    │
+│ Siddhartha's Apple Watch │ 68    │ 2026-02-12 19:06:22 +0530    │
+│ Siddhartha's Apple Watch │ 75    │ 2026-02-12 18:58:14 +0530    │
+└──────────────────────────┴───────┴──────────────────────────────┘
 
-$ healthsync query steps --from 2024-01-01 --format json
-$ healthsync query workouts --format csv
-$ healthsync server --port 8080</code></pre>
+$ healthsync skills install   # teach your AI agent to query health data
+✓ Installed healthsync skill to ~/.claude/skills/healthsync/
+  Files: healthsync.md, .healthsync-version</code></pre>
+
+    <div class="home-section">
+      <h2>Built for AI agents</h2>
+      <p>The primary motivation for healthsync is to make Apple Health data accessible to AI coding agents. Run <code>healthsync skills install</code> to give your agent the schema, CLI reference, and SQL examples it needs to answer questions like:</p>
+      <ul>
+        <li><em>"What was my average resting heart rate last month?"</em></li>
+        <li><em>"How many hours did I sleep on average this week?"</em></li>
+        <li><em>"Show me my VO2 Max trend over the past year."</em></li>
+        <li><em>"Which workout type burns the most calories for me?"</em></li>
+      </ul>
+      <p>The skill installs to <code>~/.claude/skills/healthsync/</code> and is automatically picked up by Claude Code and compatible agents on next session start.</p>
+    </div>
 
     <div class="home-section">
       <h2>What it does</h2>
       <ul>
-        <li>Parses <code>.zip</code> or <code>.xml</code> Apple Health exports via streaming XML (constant ~10MB memory)</li>
+        <li>Parses <code>.zip</code> or <code>.xml</code> Apple Health exports via streaming XML (constant ~10MB memory for 950MB+ files)</li>
         <li>Stores records in <code>~/.healthsync/healthsync.db</code> (SQLite, WAL mode, deduplication via <code>INSERT OR IGNORE</code>)</li>
         <li>Queries 6 metrics: heart rate, steps, SpO2, VO2 Max, sleep, workouts</li>
         <li>Output as table, JSON, or CSV with date range filters</li>
         <li>HTTP server with async upload (<code>202 Accepted</code> + progress polling) for Tailscale workflows</li>
+        <li>Agent skills for Claude Code and Codex CLI via <code>healthsync skills install</code></li>
         <li>Single binary, zero CGO dependencies (<a href="https://pkg.go.dev/modernc.org/sqlite">modernc.org/sqlite</a>)</li>
       </ul>
     </div>
@@ -77,6 +93,11 @@ sudo mv healthsync /usr/local/bin/</code></pre>
           <pre><code>healthsync query heart-rate --limit 10
 healthsync query steps --from 2024-01-01 --format json</code></pre>
         </li>
+        <li>
+          <strong>Install agent skill (optional)</strong>
+          <pre><code>healthsync skills install</code></pre>
+          <p>Your AI agent can now query your health data directly in conversation.</p>
+        </li>
       </ol>
     </div>
 
@@ -90,7 +111,8 @@ healthsync query steps --from 2024-01-01 --format json</code></pre>
           <tr><td>Parser</td><td>Streaming XML with DTD stripping via <code>io.Pipe</code>. Handles 500k+ records in ~30s.</td></tr>
           <tr><td>Storage</td><td>Pure Go SQLite. WAL mode, batch inserts (1000/tx), <code>UNIQUE</code> constraints for dedup.</td></tr>
           <tr><td>Server</td><td>Chi router. <code>POST /api/upload</code> returns <code>202</code>, parses async, poll <code>GET /api/upload/status</code>.</td></tr>
-          <tr><td>CLI</td><td>Cobra. <code>parse</code>, <code>query</code>, <code>server</code> subcommands. <code>--db</code>, <code>--format</code>, <code>--from/--to</code> flags.</td></tr>
+          <tr><td>CLI</td><td>Cobra. <code>parse</code>, <code>query</code>, <code>server</code>, <code>skills</code> subcommands. <code>--db</code>, <code>--format</code>, <code>--from/--to</code> flags.</td></tr>
+          <tr><td>Skills</td><td>go:embed. <code>healthsync skills install</code> writes schema + query docs to <code>~/.claude/skills/</code> for agent pickup.</td></tr>
         </tbody>
       </table>
     </div>

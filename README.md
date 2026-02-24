@@ -1,6 +1,8 @@
 # healthsync
 
-Sync Apple Health export data into a local queryable SQLite database. Two modes: CLI for local file parsing, HTTP server for receiving uploads over Tailscale from iPhone Shortcuts.
+Parse Apple Health exports into a local SQLite database — queryable by AI agents, the CLI, or directly via SQL.
+
+The primary motivation is to make your Apple Health data accessible to AI coding agents. Run `healthsync skills install` to give Claude Code or Codex CLI the schema, CLI reference, and SQL examples it needs to answer questions about your health data in conversation.
 
 **Docs**: [healthsync.sidv.dev](https://healthsync.sidv.dev)
 
@@ -18,7 +20,7 @@ go install github.com/BRO3886/healthsync@latest
 
 Or download a pre-built binary from [GitHub Releases](https://github.com/BRO3886/healthsync/releases) (macOS and Linux, arm64 and amd64).
 
-Or build from source (requires Go 1.21+):
+Or build from source (requires Go 1.24+):
 
 ```bash
 git clone git@github.com:BRO3886/healthsync.git
@@ -51,6 +53,30 @@ healthsync query spo2 --format csv
 Available tables: `heart-rate`, `steps`, `spo2`, `vo2max`, `sleep`, `workouts`
 
 Output formats: `table` (default), `json`, `csv`
+
+Use `--total` with `steps` for deduplicated daily totals:
+
+```bash
+healthsync query steps --total --from 2024-01-01
+```
+
+### AI agent skills
+
+Install the healthsync skill to teach your AI coding agent how to query your health data:
+
+```bash
+healthsync skills install
+```
+
+This writes the database schema, CLI reference, and SQL query examples to `~/.claude/skills/healthsync/` (Claude Code) or `~/.agents/skills/healthsync/` (Codex CLI). The agent picks it up automatically on the next session start and can then answer questions like "What was my average heart rate last week?" by running queries against your local database.
+
+```bash
+# Check installation status
+healthsync skills status
+
+# Uninstall
+healthsync skills uninstall --agent claude
+```
 
 ### HTTP server
 
@@ -112,6 +138,7 @@ These types exist in Apple Health exports but are not currently stored. Open an 
 - **Batch inserts** — 1000 rows per transaction for performance
 - **Async uploads** — HTTP server parses in background, poll `/api/upload/status` for progress
 - **Pure Go SQLite** — uses `modernc.org/sqlite`, no CGO required
+- **Agent skills** — embedded skill files (go:embed) installed via `healthsync skills install`
 
 Database is stored at `~/.healthsync/healthsync.db` by default (override with `--db`).
 

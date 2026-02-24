@@ -1,7 +1,7 @@
 ---
 title: "healthsync"
-description: "Your health data, locally queryable. Parse Apple Health exports into SQLite."
-lead: "Parse Apple Health exports into SQLite. CLI for local queries, HTTP server for Tailscale uploads from iPhone."
+description: "Your Apple Health data, locally stored and queryable by AI agents. Parse exports into SQLite."
+lead: "Parse Apple Health exports into a local SQLite database. Query from the CLI, serve over HTTP, or let your AI agent ask the questions."
 date: 2026-02-12T00:00:00+05:30
 draft: false
 ---

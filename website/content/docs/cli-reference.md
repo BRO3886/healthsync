@@ -55,6 +55,7 @@ healthsync query <table> [flags]
 | `--to` | Filter records to this date (inclusive) | — |
 | `--limit` | Maximum records to return | `50` |
 | `--format` | Output format: `table`, `json`, `csv` | `table` |
+| `--total` | Show deduplicated daily totals (steps only) | `false` |
 | `--db` | Path to SQLite database | `~/.healthsync/healthsync.db` |
 
 **Available tables:**
@@ -82,6 +83,9 @@ healthsync query steps --from 2024-01-01 --to 2024-12-31 --format csv
 
 # No limit (return all)
 healthsync query spo2 --limit 0
+
+# Deduplicated daily step totals
+healthsync query steps --total --from 2024-01-01
 ```
 
 ---
@@ -111,3 +115,85 @@ healthsync server --port 9090 --host 127.0.0.1
 ```
 
 See the [Server API](/docs/server-api/) page for endpoint documentation.
+
+---
+
+## `healthsync skills`
+
+Manage the healthsync AI agent skill — install, uninstall, or check status.
+
+```bash
+healthsync skills <subcommand> [flags]
+```
+
+The skill teaches AI coding agents (Claude Code, Codex CLI, etc.) how to query your Apple Health data. It includes the database schema, CLI reference, and SQL query examples. Once installed, agents pick it up automatically on next session start.
+
+### `healthsync skills install`
+
+```bash
+healthsync skills install [--agent <target>]
+```
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--agent` | Agent target: `claude`, `codex`, or `all` | interactive picker |
+
+**Install destinations:**
+
+| Agent | Directory |
+|-------|-----------|
+| `claude` | `~/.claude/skills/healthsync/` |
+| `codex` | `~/.agents/skills/healthsync/` |
+
+**Examples:**
+
+```bash
+# Interactive picker (detects installed agents)
+healthsync skills install
+
+# Install for Claude Code specifically
+healthsync skills install --agent claude
+
+# Install for all supported agents
+healthsync skills install --agent all
+```
+
+### `healthsync skills uninstall`
+
+```bash
+healthsync skills uninstall [--agent <target>]
+```
+
+Removes the skill directory for the selected agent(s).
+
+```bash
+healthsync skills uninstall --agent claude
+```
+
+### `healthsync skills status`
+
+```bash
+healthsync skills status
+```
+
+Shows whether the skill is installed for each supported agent, and whether the installed version matches the current binary.
+
+```
+healthsync skill (binary v0.3.0):
+  ✓ claude       ~/.claude/skills/healthsync/ (installed v0.3.0)
+  ✗ codex        ~/.agents/skills/healthsync/ (not installed)
+```
+
+---
+
+## `healthsync version`
+
+Print version, commit hash, and build date.
+
+```bash
+healthsync version
+```
+
+```
+healthsync v0.3.0 (commit bc829bc, built 2026-02-25T10:00:00Z)
+```
