@@ -10,18 +10,26 @@ type Record struct {
 	EndDate    string `xml:"endDate,attr"`
 }
 
+// WorkoutStatistics is a child element of <Workout> that provides aggregated metrics.
+type WorkoutStatistics struct {
+	Type string `xml:"type,attr"`
+	Sum  string `xml:"sum,attr"`
+	Unit string `xml:"unit,attr"`
+}
+
 // Workout represents a single Apple Health Workout element.
 type Workout struct {
-	ActivityType          string `xml:"workoutActivityType,attr"`
-	Duration              string `xml:"duration,attr"`
-	DurationUnit          string `xml:"durationUnit,attr"`
-	TotalDistance          string `xml:"totalDistance,attr"`
-	TotalDistanceUnit     string `xml:"totalDistanceUnit,attr"`
-	TotalEnergyBurned     string `xml:"totalEnergyBurned,attr"`
-	TotalEnergyBurnedUnit string `xml:"totalEnergyBurnedUnit,attr"`
-	SourceName            string `xml:"sourceName,attr"`
-	StartDate             string `xml:"startDate,attr"`
-	EndDate               string `xml:"endDate,attr"`
+	ActivityType          string               `xml:"workoutActivityType,attr"`
+	Duration              string               `xml:"duration,attr"`
+	DurationUnit          string               `xml:"durationUnit,attr"`
+	TotalDistance         string               `xml:"totalDistance,attr"`
+	TotalDistanceUnit     string               `xml:"totalDistanceUnit,attr"`
+	TotalEnergyBurned     string               `xml:"totalEnergyBurned,attr"`
+	TotalEnergyBurnedUnit string               `xml:"totalEnergyBurnedUnit,attr"`
+	SourceName            string               `xml:"sourceName,attr"`
+	StartDate             string               `xml:"startDate,attr"`
+	EndDate               string               `xml:"endDate,attr"`
+	Statistics            []WorkoutStatistics  `xml:"WorkoutStatistics"`
 }
 
 // TargetRecordTypes is the set of HK types we care about, mapping to table names.

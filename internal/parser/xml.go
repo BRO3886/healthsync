@@ -237,6 +237,24 @@ func parseXML(r io.Reader, db *storage.DB, progress ProgressFunc) (*ParseResult,
 				continue
 			}
 
+			// Populate from WorkoutStatistics children if attributes not present (watchOS 10+)
+			for _, s := range w.Statistics {
+				switch s.Type {
+				case "HKQuantityTypeIdentifierActiveEnergyBurned":
+					if w.TotalEnergyBurned == "" {
+						w.TotalEnergyBurned = s.Sum
+						w.TotalEnergyBurnedUnit = s.Unit
+					}
+				case "HKQuantityTypeIdentifierDistanceWalkingRunning",
+					"HKQuantityTypeIdentifierDistanceCycling",
+					"HKQuantityTypeIdentifierDistanceSwimming":
+					if w.TotalDistance == "" {
+						w.TotalDistance = s.Sum
+						w.TotalDistanceUnit = s.Unit
+					}
+				}
+			}
+
 			duration := parseFloat(w.Duration)
 			totalDistance := parseFloat(w.TotalDistance)
 			totalEnergy := parseFloat(w.TotalEnergyBurned)

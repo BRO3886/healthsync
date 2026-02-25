@@ -684,6 +684,106 @@ func TestParseFile_WorkoutWithChildElements(t *testing.T) {
 	if result.Workouts != 1 {
 		t.Errorf("expected 1 workout, got %d", result.Workouts)
 	}
+
+	// Attributes take priority — energy/distance should be from attributes, not WorkoutStatistics
+	rows, err := db.QueryRows(storage.QueryParams{Table: "workouts", Limit: 10})
+	if err != nil {
+		t.Fatalf("query error: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 row, got %d", len(rows))
+	}
+	row := rows[0]
+	if row["total_energy_burned"] != float64(300) {
+		t.Errorf("expected total_energy_burned=300, got %v", row["total_energy_burned"])
+	}
+	if row["total_distance"] != float64(5) {
+		t.Errorf("expected total_distance=5, got %v", row["total_distance"])
+	}
+}
+
+func TestParseFile_WorkoutStatistics_PopulatesEnergyAndDistance(t *testing.T) {
+	// No totalEnergyBurned / totalDistance attributes — values come from WorkoutStatistics children
+	xml := makeTestXML(`
+  <Workout workoutActivityType="HKWorkoutActivityTypeCycling" duration="47.4" durationUnit="min" sourceName="Watch" startDate="2024-06-01 09:00:00 +0000" endDate="2024-06-01 09:47:00 +0000">
+    <WorkoutStatistics type="HKQuantityTypeIdentifierActiveEnergyBurned" startDate="2024-06-01 09:00:00 +0000" endDate="2024-06-01 09:47:00 +0000" sum="230.44" unit="Cal"/>
+    <WorkoutStatistics type="HKQuantityTypeIdentifierDistanceCycling" startDate="2024-06-01 09:00:00 +0000" endDate="2024-06-01 09:47:00 +0000" sum="10.43" unit="km"/>
+  </Workout>
+`)
+	f := writeTestXML(t, xml)
+	db := tempDB(t)
+
+	result, err := ParseFile(f, db, nil)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if result.Workouts != 1 {
+		t.Fatalf("expected 1 workout, got %d", result.Workouts)
+	}
+
+	rows, err := db.QueryRows(storage.QueryParams{Table: "workouts", Limit: 10})
+	if err != nil {
+		t.Fatalf("query error: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 row, got %d", len(rows))
+	}
+	row := rows[0]
+	if row["total_energy_burned"] == nil {
+		t.Error("expected total_energy_burned to be populated from WorkoutStatistics, got nil")
+	}
+	if row["total_energy_burned"] != 230.44 {
+		t.Errorf("expected total_energy_burned=230.44, got %v", row["total_energy_burned"])
+	}
+	if row["total_energy_burned_unit"] != "Cal" {
+		t.Errorf("expected total_energy_burned_unit=Cal, got %v", row["total_energy_burned_unit"])
+	}
+	if row["total_distance"] == nil {
+		t.Error("expected total_distance to be populated from WorkoutStatistics, got nil")
+	}
+	if row["total_distance"] != 10.43 {
+		t.Errorf("expected total_distance=10.43, got %v", row["total_distance"])
+	}
+	if row["total_distance_unit"] != "km" {
+		t.Errorf("expected total_distance_unit=km, got %v", row["total_distance_unit"])
+	}
+}
+
+func TestParseFile_WorkoutStatistics_AttributeTakesPriority(t *testing.T) {
+	// Attribute value (100) should win over WorkoutStatistics value (200)
+	xml := makeTestXML(`
+  <Workout workoutActivityType="HKWorkoutActivityTypeRunning" duration="30" durationUnit="min" totalEnergyBurned="100" totalEnergyBurnedUnit="kcal" sourceName="Watch" startDate="2024-01-01 08:00:00 +0000" endDate="2024-01-01 08:30:00 +0000">
+    <WorkoutStatistics type="HKQuantityTypeIdentifierActiveEnergyBurned" sum="200" unit="kcal"/>
+    <WorkoutStatistics type="HKQuantityTypeIdentifierDistanceWalkingRunning" sum="5.0" unit="km"/>
+  </Workout>
+`)
+	f := writeTestXML(t, xml)
+	db := tempDB(t)
+
+	result, err := ParseFile(f, db, nil)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if result.Workouts != 1 {
+		t.Fatalf("expected 1 workout, got %d", result.Workouts)
+	}
+
+	rows, err := db.QueryRows(storage.QueryParams{Table: "workouts", Limit: 10})
+	if err != nil {
+		t.Fatalf("query error: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 row, got %d", len(rows))
+	}
+	row := rows[0]
+	// Attribute (100) should take priority over WorkoutStatistics (200)
+	if row["total_energy_burned"] != float64(100) {
+		t.Errorf("expected total_energy_burned=100 (attribute priority), got %v", row["total_energy_burned"])
+	}
+	// Distance was not in attributes — should be populated from WorkoutStatistics
+	if row["total_distance"] != 5.0 {
+		t.Errorf("expected total_distance=5.0 from WorkoutStatistics, got %v", row["total_distance"])
+	}
 }
 
 // --- Mixed records and workouts ---
