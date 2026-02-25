@@ -411,13 +411,81 @@ blockquote p:last-child { margin-bottom: 0; }
 .badge-dot-vo2     { background: #FF9F0A; }
 .badge-dot-workout { background: #FF6B35; }
 
-/* Code block */
-.home-code {
+/* ── Terminal widget ── */
+.home-terminal {
   margin-bottom: 3rem;
-  font-size: 0.88rem;
-  line-height: 1.6;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.12);
   animation: fadeSlideUp 0.45s 0.22s ease both;
+  /* always dark regardless of theme */
+  background: #1a1b1e;
+  border: 1px solid rgba(255,255,255,0.08);
 }
+.terminal-chrome {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1rem;
+  background: #242527;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.terminal-dots {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.terminal-dots span {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+}
+.terminal-dots span:nth-child(1) { background: #FF5F57; }
+.terminal-dots span:nth-child(2) { background: #FEBC2E; }
+.terminal-dots span:nth-child(3) { background: #28C840; }
+.terminal-title {
+  flex: 1;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: #6b6e7a;
+  letter-spacing: 0.01em;
+}
+.home-code {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding: 1.25rem 1.4rem 1.4rem;
+  font-size: 0.86rem;
+  line-height: 1.7;
+  color: #cdd6f4;
+  overflow-x: auto;
+}
+.home-code code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+  color: inherit;
+}
+
+/* Terminal syntax colors — always-dark palette */
+.t-prompt  { color: #6b6e7a; user-select: none; }      /* $ — muted */
+.t-cmd     { color: #cba6f7; font-weight: 600; }        /* command name — mauve */
+.t-arg     { color: #cdd6f4; }                          /* arguments — base text */
+.t-flag    { color: #89b4fa; }                          /* --flags — blue */
+.t-string  { color: #a6e3a1; }                          /* strings — green */
+.t-comment { color: #585b70; font-style: italic; }      /* # comments — muted */
+.t-success { color: #a6e3a1; }                          /* ✓ success — green */
+.t-num     { color: #fab387; }                          /* numbers — peach */
+.t-url     { color: #89dceb; }                          /* URLs — sky */
+.t-path    { color: #f9e2af; }                          /* file paths — yellow */
+.t-dim     { color: #585b70; }                          /* dim output */
+.t-border  { color: #45475a; }                          /* table borders */
+.t-header  { color: #89b4fa; font-weight: 600; }        /* table headers — blue */
+.t-val-hr  { color: #ff79c6; }                          /* heart rate value */
+.t-spinner { color: #a6e3a1; }
 
 /* Sections */
 .home-section { margin-bottom: 3rem; }

@@ -20,26 +20,34 @@
       </div>
     </div>
 
-    {{/* ── Code block ── */}}
-    <pre class="home-code"><code>$ curl -fsSL https://healthsync.sidv.dev/install | bash
+    {{/* ── Terminal widget ── */}}
+    <div class="home-terminal">
+      <div class="terminal-chrome">
+        <div class="terminal-dots"><span></span><span></span><span></span></div>
+        <span class="terminal-title">zsh — 80×24</span>
+      </div>
+      <pre class="home-code"><code><span class="t-prompt">$</span> <span class="t-cmd">curl</span> <span class="t-flag">-fsSL</span> <span class="t-url">https://healthsync.sidv.dev/install</span> | <span class="t-cmd">bash</span>
+<span class="t-success">✓</span> <span class="t-arg">healthsync v0.3.0 installed to</span> <span class="t-path">/usr/local/bin/healthsync</span>
 
-$ healthsync parse export.zip
-  ⣾ 540,110 records · 1,011 workouts · 18,432/s · 30s
-  Records:  540,110
-  Workouts: 1,011
-  Duration: 30.621s
+<span class="t-prompt">$</span> <span class="t-cmd">healthsync</span> <span class="t-arg">parse</span> <span class="t-path">export.zip</span>
+  <span class="t-spinner">⣾</span> <span class="t-num">540,110</span> <span class="t-dim">records ·</span> <span class="t-num">1,011</span> <span class="t-dim">workouts ·</span> <span class="t-num">18,432</span><span class="t-dim">/s · 30s</span>
+  <span class="t-dim">Records:</span>  <span class="t-num">540,110</span>
+  <span class="t-dim">Workouts:</span> <span class="t-num">1,011</span>
+  <span class="t-dim">Duration:</span> <span class="t-num">30.621</span><span class="t-dim">s</span>
 
-$ healthsync query heart-rate --limit 3
-┌──────────────────────────┬───────┬──────────────────────────────┐
-│ SOURCE_NAME              │ VALUE │ START_DATE                   │
-├──────────────────────────┼───────┼──────────────────────────────┤
-│ Siddhartha's Apple Watch │ 72    │ 2026-02-12 19:11:31 +0530    │
-│ Siddhartha's Apple Watch │ 68    │ 2026-02-12 19:06:22 +0530    │
-│ Siddhartha's Apple Watch │ 75    │ 2026-02-12 18:58:14 +0530    │
-└──────────────────────────┴───────┴──────────────────────────────┘
+<span class="t-prompt">$</span> <span class="t-cmd">healthsync</span> <span class="t-arg">query</span> <span class="t-arg">heart-rate</span> <span class="t-flag">--limit</span> <span class="t-num">3</span>
+<span class="t-border">┌──────────────────────────┬───────┬──────────────────────────────┐</span>
+<span class="t-border">│</span> <span class="t-header">SOURCE_NAME             </span> <span class="t-border">│</span> <span class="t-header">VALUE</span> <span class="t-border">│</span> <span class="t-header">START_DATE                  </span> <span class="t-border">│</span>
+<span class="t-border">├──────────────────────────┼───────┼──────────────────────────────┤</span>
+<span class="t-border">│</span> <span class="t-arg">Siddhartha's Apple Watch</span> <span class="t-border">│</span> <span class="t-val-hr">72</span>    <span class="t-border">│</span> <span class="t-dim">2026-02-12 19:11:31 +0530</span>   <span class="t-border">│</span>
+<span class="t-border">│</span> <span class="t-arg">Siddhartha's Apple Watch</span> <span class="t-border">│</span> <span class="t-val-hr">68</span>    <span class="t-border">│</span> <span class="t-dim">2026-02-12 19:06:22 +0530</span>   <span class="t-border">│</span>
+<span class="t-border">│</span> <span class="t-arg">Siddhartha's Apple Watch</span> <span class="t-border">│</span> <span class="t-val-hr">75</span>    <span class="t-border">│</span> <span class="t-dim">2026-02-12 18:58:14 +0530</span>   <span class="t-border">│</span>
+<span class="t-border">└──────────────────────────┴───────┴──────────────────────────────┘</span>
 
-$ healthsync skills install   # teach your AI agent to query health data
-✓ Installed healthsync skill to ~/.claude/skills/healthsync/</code></pre>
+<span class="t-prompt">$</span> <span class="t-cmd">healthsync</span> <span class="t-arg">skills install</span> <span class="t-comment"># teach your AI agent to query health data</span>
+<span class="t-success">✓</span> <span class="t-arg">Installed to</span> <span class="t-path">~/.claude/skills/healthsync/</span>
+  <span class="t-dim">Files:</span> <span class="t-string">healthsync.md</span><span class="t-dim">,</span> <span class="t-string">.healthsync-version</span></code></pre>
+    </div>
 
     {{/* ── Agent section ── */}}
     <div class="home-section">
