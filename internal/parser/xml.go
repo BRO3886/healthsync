@@ -117,11 +117,25 @@ func parseXML(r io.Reader, db *storage.DB, progress ProgressFunc) (*ParseResult,
 	var workoutCount int64
 	batchSize := 1000
 
+	// bpKey identifies a blood pressure reading by source + start time.
+	type bpKey struct{ source, start string }
+	type bpEntry struct {
+		endDate   string
+		systolic  any
+		diastolic any
+		unit      string
+	}
+	bpStaging := make(map[bpKey]*bpEntry)
+
 	flushTable := func(table string) error {
 		if len(buffers[table]) == 0 {
 			return nil
 		}
-		_, err := db.BatchInsertRecords(table, RecordColumns(table), buffers[table])
+		cols := RecordColumns(table)
+		if table == "blood_pressure" {
+			cols = BloodPressureColumns()
+		}
+		_, err := db.BatchInsertRecords(table, cols, buffers[table])
 		if err != nil {
 			return err
 		}
@@ -167,11 +181,42 @@ func parseXML(r io.Reader, db *storage.DB, progress ProgressFunc) (*ParseResult,
 				continue
 			}
 
+			// Blood pressure: stage both values; only emit row when pair is complete.
+			if table == "blood_pressure_systolic" || table == "blood_pressure_diastolic" {
+				key := bpKey{rec.SourceName, rec.StartDate}
+				e, exists := bpStaging[key]
+				if !exists {
+					e = &bpEntry{endDate: rec.EndDate, unit: rec.Unit}
+					bpStaging[key] = e
+				}
+				v := parseFloat(rec.Value)
+				if table == "blood_pressure_systolic" {
+					e.systolic = v
+				} else {
+					e.diastolic = v
+				}
+				if e.systolic != nil && e.diastolic != nil {
+					row := []any{key.source, key.start, e.endDate, e.systolic, e.diastolic, e.unit}
+					buffers["blood_pressure"] = append(buffers["blood_pressure"], row)
+					delete(bpStaging, key)
+					recordCount++
+					if len(buffers["blood_pressure"]) >= batchSize {
+						if err := flushTable("blood_pressure"); err != nil {
+							return nil, fmt.Errorf("flushing blood_pressure: %w", err)
+						}
+					}
+					if recordCount%10000 == 0 && progress != nil {
+						progress(recordCount, workoutCount)
+					}
+				}
+				continue
+			}
+
 			var row []any
-			if table == "sleep" {
+			if noUnitTables[table] {
 				row = []any{rec.SourceName, rec.StartDate, rec.EndDate, rec.Value}
 			} else {
-				row = []any{rec.SourceName, rec.StartDate, rec.EndDate, rec.Value, rec.Unit}
+				row = []any{rec.SourceName, rec.StartDate, rec.EndDate, parseFloat(rec.Value), rec.Unit}
 			}
 			buffers[table] = append(buffers[table], row)
 			recordCount++

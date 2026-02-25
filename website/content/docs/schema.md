@@ -11,6 +11,8 @@ The database is stored at `~/.healthsync/healthsync.db` by default. You can quer
 
 ## Tables
 
+### Cardiac / Vitals
+
 ### heart_rate
 
 ```sql
@@ -99,6 +101,182 @@ CREATE TABLE sleep (
 | `HKCategoryValueSleepAnalysisAsleepREM` | REM sleep |
 | `HKCategoryValueSleepAnalysisAwake` | Awake |
 | `HKCategoryValueSleepAnalysisAsleepUnspecified` | Unspecified |
+
+### resting_heart_rate
+
+```sql
+CREATE TABLE resting_heart_rate (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_name TEXT NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    value REAL NOT NULL,          -- count/min (BPM)
+    unit TEXT NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(source_name, start_date, end_date, value)
+);
+```
+
+### hrv
+
+```sql
+CREATE TABLE hrv (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_name TEXT NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    value REAL NOT NULL,          -- ms (SDNN)
+    unit TEXT NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(source_name, start_date, end_date, value)
+);
+```
+
+### heart_rate_recovery
+
+```sql
+CREATE TABLE heart_rate_recovery (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_name TEXT NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    value REAL NOT NULL,          -- count/min
+    unit TEXT NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(source_name, start_date, end_date, value)
+);
+```
+
+### respiratory_rate
+
+```sql
+CREATE TABLE respiratory_rate (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_name TEXT NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    value REAL NOT NULL,          -- breaths/min
+    unit TEXT NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(source_name, start_date, end_date, value)
+);
+```
+
+### blood_pressure
+
+Blood pressure is stored as a paired reading — systolic and diastolic are matched by `source_name + start_date` during parsing and written as a single row.
+
+```sql
+CREATE TABLE blood_pressure (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_name TEXT NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    systolic REAL NOT NULL,       -- mmHg
+    diastolic REAL NOT NULL,      -- mmHg
+    unit TEXT NOT NULL,           -- "mmHg"
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(source_name, start_date, end_date, systolic, diastolic)
+);
+```
+
+### Activity / Energy
+
+The following tables share the standard schema (`source_name, start_date, end_date, value REAL, unit TEXT`):
+
+- `active_energy` — active calories burned (kcal). Supports `--total` for deduplicated daily totals.
+- `basal_energy` — resting/basal calories burned (kcal). Supports `--total`.
+- `exercise_time` — exercise minutes
+- `stand_time` — stand minutes
+- `flights_climbed` — flights of stairs
+- `distance_walking_running` — walk/run distance
+- `distance_cycling` — cycling distance
+
+```sql
+CREATE TABLE active_energy (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_name TEXT NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    value REAL NOT NULL,          -- kcal
+    unit TEXT NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(source_name, start_date, end_date, value)
+);
+```
+
+### Body
+
+The following tables share the standard schema:
+
+- `body_mass` — body weight (kg/lb)
+- `body_mass_index` — BMI
+- `height` — height (m/ft)
+
+### Mobility / Walking
+
+The following tables share the standard schema:
+
+- `walking_speed` — m/s
+- `walking_step_length` — m
+- `walking_asymmetry` — %
+- `walking_double_support` — %
+- `walking_steadiness` — score
+- `stair_ascent_speed` — ft/s
+- `stair_descent_speed` — ft/s
+- `six_minute_walk` — m
+
+### Running metrics
+
+The following tables share the standard schema:
+
+- `running_speed` — m/s
+- `running_power` — W
+- `running_stride_length` — m
+- `running_ground_contact_time` — ms
+- `running_vertical_oscillation` — cm
+
+### Other quantity types
+
+The following tables share the standard schema:
+
+- `wrist_temperature` — °C deviation from baseline
+- `time_in_daylight` — minutes
+- `dietary_water` — mL/L
+- `physical_effort` — MET score
+- `walking_heart_rate` — BPM average while walking
+
+### mindful_sessions
+
+```sql
+CREATE TABLE mindful_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_name TEXT NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    value TEXT NOT NULL,           -- category value
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(source_name, start_date, end_date, value)
+);
+```
+
+> **Note:** No `unit` column — this is a category type. Duration can be derived from `end_date - start_date`.
+
+### stand_hours
+
+```sql
+CREATE TABLE stand_hours (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_name TEXT NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    value TEXT NOT NULL,           -- HKCategoryValueAppleStandHourStood or Idle
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(source_name, start_date, end_date, value)
+);
+```
+
+> **Note:** No `unit` column — this is a category type.
 
 ### workouts
 

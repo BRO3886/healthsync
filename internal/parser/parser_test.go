@@ -79,11 +79,19 @@ func TestWorkoutColumns(t *testing.T) {
 
 func TestTargetRecordTypes(t *testing.T) {
 	expected := map[string]string{
+		// Original 5
 		"HKQuantityTypeIdentifierHeartRate":        "heart_rate",
 		"HKQuantityTypeIdentifierStepCount":        "steps",
 		"HKQuantityTypeIdentifierOxygenSaturation": "spo2",
 		"HKQuantityTypeIdentifierVO2Max":           "vo2_max",
 		"HKCategoryTypeIdentifierSleepAnalysis":    "sleep",
+		// Spot-check new entries
+		"HKQuantityTypeIdentifierRestingHeartRate":        "resting_heart_rate",
+		"HKQuantityTypeIdentifierActiveEnergyBurned":      "active_energy",
+		"HKQuantityTypeIdentifierBodyMass":                "body_mass",
+		"HKCategoryTypeIdentifierMindfulSession":          "mindful_sessions",
+		"HKQuantityTypeIdentifierBloodPressureSystolic":   "blood_pressure_systolic",
+		"HKQuantityTypeIdentifierBloodPressureDiastolic":  "blood_pressure_diastolic",
 	}
 	for k, v := range expected {
 		if got, ok := TargetRecordTypes[k]; !ok {
@@ -91,6 +99,9 @@ func TestTargetRecordTypes(t *testing.T) {
 		} else if got != v {
 			t.Errorf("key %s: expected %s, got %s", k, v, got)
 		}
+	}
+	if len(TargetRecordTypes) < 39 {
+		t.Errorf("expected at least 39 entries, got %d", len(TargetRecordTypes))
 	}
 }
 
@@ -284,9 +295,10 @@ func TestParseFile_AllRecordTypes(t *testing.T) {
 }
 
 func TestParseFile_SkipsIrrelevantRecords(t *testing.T) {
+	// DietaryCaffeine and UVExposure are not in TargetRecordTypes — should be skipped
 	xml := makeTestXML(`
-  <Record type="HKQuantityTypeIdentifierDietaryWater" sourceName="App" unit="mL" value="200" startDate="2024-01-01 00:00:00 +0000" endDate="2024-01-01 00:01:00 +0000"/>
-  <Record type="HKQuantityTypeIdentifierBodyMass" sourceName="App" unit="kg" value="70" startDate="2024-01-01 00:00:00 +0000" endDate="2024-01-01 00:01:00 +0000"/>
+  <Record type="HKQuantityTypeIdentifierDietaryCaffeine" sourceName="App" unit="mg" value="80" startDate="2024-01-01 00:00:00 +0000" endDate="2024-01-01 00:01:00 +0000"/>
+  <Record type="HKQuantityTypeIdentifierUVExposure" sourceName="App" unit="count" value="3" startDate="2024-01-01 00:00:00 +0000" endDate="2024-01-01 00:01:00 +0000"/>
   <Record type="HKQuantityTypeIdentifierHeartRate" sourceName="Watch" unit="count/min" value="72" startDate="2024-01-01 00:00:00 +0000" endDate="2024-01-01 00:01:00 +0000"/>
 `)
 	f := writeTestXML(t, xml)
@@ -302,8 +314,9 @@ func TestParseFile_SkipsIrrelevantRecords(t *testing.T) {
 }
 
 func TestParseFile_ZeroMatchingRecords(t *testing.T) {
+	// DietaryCaffeine is not in TargetRecordTypes — should produce 0 records
 	xml := makeTestXML(`
-  <Record type="HKQuantityTypeIdentifierDietaryWater" sourceName="App" unit="mL" value="200" startDate="2024-01-01 00:00:00 +0000" endDate="2024-01-01 00:01:00 +0000"/>
+  <Record type="HKQuantityTypeIdentifierDietaryCaffeine" sourceName="App" unit="mg" value="80" startDate="2024-01-01 00:00:00 +0000" endDate="2024-01-01 00:01:00 +0000"/>
 `)
 	f := writeTestXML(t, xml)
 	db := tempDB(t)
@@ -516,6 +529,143 @@ func TestParseFile_RecordWithMetadata(t *testing.T) {
 	}
 }
 
+func TestRecordColumns_CategoryTables(t *testing.T) {
+	for _, tbl := range []string{"mindful_sessions", "stand_hours"} {
+		cols := RecordColumns(tbl)
+		if len(cols) != 4 {
+			t.Errorf("%s: expected 4 columns, got %d", tbl, len(cols))
+		}
+		for _, c := range cols {
+			if c == "unit" {
+				t.Errorf("%s: should not have unit column", tbl)
+			}
+		}
+	}
+}
+
+func TestBloodPressureColumns(t *testing.T) {
+	cols := BloodPressureColumns()
+	if len(cols) != 6 {
+		t.Errorf("expected 6 blood pressure columns, got %d", len(cols))
+	}
+	expected := []string{"source_name", "start_date", "end_date", "systolic", "diastolic", "unit"}
+	for i, e := range expected {
+		if cols[i] != e {
+			t.Errorf("column %d: expected %s, got %s", i, e, cols[i])
+		}
+	}
+}
+
+func TestParseFile_NewQuantityTypes(t *testing.T) {
+	xmlContent := makeTestXML(`
+  <Record type="HKQuantityTypeIdentifierRestingHeartRate" sourceName="Watch" unit="count/min" value="58" startDate="2024-01-01 08:00:00 +0000" endDate="2024-01-01 08:01:00 +0000"/>
+  <Record type="HKQuantityTypeIdentifierActiveEnergyBurned" sourceName="Watch" unit="kcal" value="350.5" startDate="2024-01-01 00:00:00 +0000" endDate="2024-01-01 23:59:59 +0000"/>
+  <Record type="HKQuantityTypeIdentifierBodyMass" sourceName="Withings" unit="kg" value="72.3" startDate="2024-01-01 07:00:00 +0000" endDate="2024-01-01 07:00:00 +0000"/>
+`)
+	f := writeTestXML(t, xmlContent)
+	db := tempDB(t)
+
+	result, err := ParseFile(f, db, nil)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if result.Total != 3 {
+		t.Errorf("expected 3 records, got %d", result.Total)
+	}
+
+	tables := map[string]int64{
+		"resting-heart-rate": 1,
+		"active-energy":      1,
+		"body-mass":          1,
+	}
+	for tbl, expected := range tables {
+		count, err := db.CountRows(tbl)
+		if err != nil {
+			t.Errorf("counting %s: %v", tbl, err)
+			continue
+		}
+		if count != expected {
+			t.Errorf("table %s: expected %d rows, got %d", tbl, expected, count)
+		}
+	}
+}
+
+func TestParseFile_CategoryTypes(t *testing.T) {
+	xmlContent := makeTestXML(`
+  <Record type="HKCategoryTypeIdentifierMindfulSession" sourceName="Headspace" value="HKCategoryValueNotApplicable" startDate="2024-01-01 07:00:00 +0000" endDate="2024-01-01 07:10:00 +0000"/>
+  <Record type="HKCategoryTypeIdentifierAppleStandHour" sourceName="Watch" value="HKCategoryValueAppleStandHourStood" startDate="2024-01-01 10:00:00 +0000" endDate="2024-01-01 11:00:00 +0000"/>
+`)
+	f := writeTestXML(t, xmlContent)
+	db := tempDB(t)
+
+	result, err := ParseFile(f, db, nil)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if result.Total != 2 {
+		t.Errorf("expected 2 records, got %d", result.Total)
+	}
+
+	for _, tbl := range []string{"mindful-sessions", "stand-hours"} {
+		count, err := db.CountRows(tbl)
+		if err != nil {
+			t.Errorf("counting %s: %v", tbl, err)
+			continue
+		}
+		if count != 1 {
+			t.Errorf("table %s: expected 1 row, got %d", tbl, count)
+		}
+	}
+}
+
+func TestParseFile_BloodPressurePairing(t *testing.T) {
+	// Same source + start_date → should produce 1 blood_pressure row
+	xmlContent := makeTestXML(`
+  <Record type="HKQuantityTypeIdentifierBloodPressureSystolic" sourceName="Watch" unit="mmHg" value="120" startDate="2024-01-01 08:00:00 +0000" endDate="2024-01-01 08:01:00 +0000"/>
+  <Record type="HKQuantityTypeIdentifierBloodPressureDiastolic" sourceName="Watch" unit="mmHg" value="80" startDate="2024-01-01 08:00:00 +0000" endDate="2024-01-01 08:01:00 +0000"/>
+`)
+	f := writeTestXML(t, xmlContent)
+	db := tempDB(t)
+
+	result, err := ParseFile(f, db, nil)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if result.Total != 1 {
+		t.Errorf("expected 1 paired record, got %d", result.Total)
+	}
+
+	count, err := db.CountRows("blood-pressure")
+	if err != nil {
+		t.Fatalf("counting blood_pressure: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("expected 1 blood_pressure row, got %d", count)
+	}
+}
+
+func TestParseFile_BloodPressureUnpairedDropped(t *testing.T) {
+	// Only systolic, no diastolic → should produce 0 rows
+	xmlContent := makeTestXML(`
+  <Record type="HKQuantityTypeIdentifierBloodPressureSystolic" sourceName="Watch" unit="mmHg" value="120" startDate="2024-01-01 08:00:00 +0000" endDate="2024-01-01 08:01:00 +0000"/>
+`)
+	f := writeTestXML(t, xmlContent)
+	db := tempDB(t)
+
+	result, err := ParseFile(f, db, nil)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if result.Total != 0 {
+		t.Errorf("expected 0 complete pairs, got %d", result.Total)
+	}
+
+	count, _ := db.CountRows("blood-pressure")
+	if count != 0 {
+		t.Errorf("expected 0 blood_pressure rows, got %d", count)
+	}
+}
+
 func TestParseFile_WorkoutWithChildElements(t *testing.T) {
 	xml := makeTestXML(`
   <Workout workoutActivityType="HKWorkoutActivityTypeRunning" duration="30" durationUnit="min" totalDistance="5" totalDistanceUnit="km" totalEnergyBurned="300" totalEnergyBurnedUnit="kcal" sourceName="Watch" startDate="2024-01-01 08:00:00 +0000" endDate="2024-01-01 08:30:00 +0000">
@@ -558,5 +708,126 @@ func TestParseFile_MixedRecordsAndWorkouts(t *testing.T) {
 	}
 	if result.Workouts != 2 {
 		t.Errorf("expected 2 workouts, got %d", result.Workouts)
+	}
+}
+
+func TestParseFile_BloodPressure_DiastolicBeforeSystolic(t *testing.T) {
+	// Diastolic arrives first in XML — staging should still pair correctly
+	xmlContent := makeTestXML(`
+  <Record type="HKQuantityTypeIdentifierBloodPressureDiastolic" sourceName="Watch" unit="mmHg" value="80" startDate="2024-01-01 08:00:00 +0000" endDate="2024-01-01 08:01:00 +0000"/>
+  <Record type="HKQuantityTypeIdentifierBloodPressureSystolic" sourceName="Watch" unit="mmHg" value="120" startDate="2024-01-01 08:00:00 +0000" endDate="2024-01-01 08:01:00 +0000"/>
+`)
+	f := writeTestXML(t, xmlContent)
+	db := tempDB(t)
+
+	result, err := ParseFile(f, db, nil)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if result.Total != 1 {
+		t.Errorf("expected 1 paired record, got %d", result.Total)
+	}
+	count, err := db.CountRows("blood-pressure")
+	if err != nil {
+		t.Fatalf("counting blood_pressure: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("expected 1 blood_pressure row, got %d", count)
+	}
+}
+
+func TestParseFile_BloodPressure_MultipleTimestamps(t *testing.T) {
+	xmlContent := makeTestXML(`
+  <Record type="HKQuantityTypeIdentifierBloodPressureSystolic" sourceName="Watch" unit="mmHg" value="120" startDate="2024-01-01 08:00:00 +0000" endDate="2024-01-01 08:01:00 +0000"/>
+  <Record type="HKQuantityTypeIdentifierBloodPressureDiastolic" sourceName="Watch" unit="mmHg" value="80" startDate="2024-01-01 08:00:00 +0000" endDate="2024-01-01 08:01:00 +0000"/>
+  <Record type="HKQuantityTypeIdentifierBloodPressureSystolic" sourceName="Watch" unit="mmHg" value="118" startDate="2024-01-02 08:00:00 +0000" endDate="2024-01-02 08:01:00 +0000"/>
+  <Record type="HKQuantityTypeIdentifierBloodPressureDiastolic" sourceName="Watch" unit="mmHg" value="76" startDate="2024-01-02 08:00:00 +0000" endDate="2024-01-02 08:01:00 +0000"/>
+`)
+	f := writeTestXML(t, xmlContent)
+	db := tempDB(t)
+
+	result, err := ParseFile(f, db, nil)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if result.Total != 2 {
+		t.Errorf("expected 2 paired records, got %d", result.Total)
+	}
+	count, err := db.CountRows("blood-pressure")
+	if err != nil {
+		t.Fatalf("counting blood_pressure: %v", err)
+	}
+	if count != 2 {
+		t.Errorf("expected 2 blood_pressure rows, got %d", count)
+	}
+}
+
+func TestParseFile_BloodPressure_DifferentSources(t *testing.T) {
+	// Watch and iPhone both measure BP at the same time — should produce 2 rows
+	xmlContent := makeTestXML(`
+  <Record type="HKQuantityTypeIdentifierBloodPressureSystolic" sourceName="Watch" unit="mmHg" value="120" startDate="2024-01-01 08:00:00 +0000" endDate="2024-01-01 08:01:00 +0000"/>
+  <Record type="HKQuantityTypeIdentifierBloodPressureDiastolic" sourceName="Watch" unit="mmHg" value="80" startDate="2024-01-01 08:00:00 +0000" endDate="2024-01-01 08:01:00 +0000"/>
+  <Record type="HKQuantityTypeIdentifierBloodPressureSystolic" sourceName="iPhone" unit="mmHg" value="122" startDate="2024-01-01 08:00:00 +0000" endDate="2024-01-01 08:01:00 +0000"/>
+  <Record type="HKQuantityTypeIdentifierBloodPressureDiastolic" sourceName="iPhone" unit="mmHg" value="82" startDate="2024-01-01 08:00:00 +0000" endDate="2024-01-01 08:01:00 +0000"/>
+`)
+	f := writeTestXML(t, xmlContent)
+	db := tempDB(t)
+
+	result, err := ParseFile(f, db, nil)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if result.Total != 2 {
+		t.Errorf("expected 2 paired records (one per source), got %d", result.Total)
+	}
+	count, err := db.CountRows("blood-pressure")
+	if err != nil {
+		t.Fatalf("counting blood_pressure: %v", err)
+	}
+	if count != 2 {
+		t.Errorf("expected 2 blood_pressure rows, got %d", count)
+	}
+}
+
+func TestParseFile_BloodPressure_OnlyBPInFile(t *testing.T) {
+	xmlContent := makeTestXML(`
+  <Record type="HKQuantityTypeIdentifierBloodPressureSystolic" sourceName="Watch" unit="mmHg" value="115" startDate="2024-01-01 09:00:00 +0000" endDate="2024-01-01 09:01:00 +0000"/>
+  <Record type="HKQuantityTypeIdentifierBloodPressureDiastolic" sourceName="Watch" unit="mmHg" value="75" startDate="2024-01-01 09:00:00 +0000" endDate="2024-01-01 09:01:00 +0000"/>
+`)
+	f := writeTestXML(t, xmlContent)
+	db := tempDB(t)
+
+	result, err := ParseFile(f, db, nil)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if result.Total != 1 {
+		t.Errorf("expected 1 record, got %d", result.Total)
+	}
+	count, _ := db.CountRows("blood-pressure")
+	if count != 1 {
+		t.Errorf("expected 1 blood_pressure row, got %d", count)
+	}
+}
+
+func TestParseFile_BloodPressure_UnpairedBothKinds(t *testing.T) {
+	// Unpaired systolic + unpaired diastolic at different timestamps — 0 rows
+	xmlContent := makeTestXML(`
+  <Record type="HKQuantityTypeIdentifierBloodPressureSystolic" sourceName="Watch" unit="mmHg" value="120" startDate="2024-01-01 08:00:00 +0000" endDate="2024-01-01 08:01:00 +0000"/>
+  <Record type="HKQuantityTypeIdentifierBloodPressureDiastolic" sourceName="Watch" unit="mmHg" value="80" startDate="2024-01-01 09:00:00 +0000" endDate="2024-01-01 09:01:00 +0000"/>
+`)
+	f := writeTestXML(t, xmlContent)
+	db := tempDB(t)
+
+	result, err := ParseFile(f, db, nil)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if result.Total != 0 {
+		t.Errorf("expected 0 complete pairs, got %d", result.Total)
+	}
+	count, _ := db.CountRows("blood-pressure")
+	if count != 0 {
+		t.Errorf("expected 0 blood_pressure rows, got %d", count)
 	}
 }

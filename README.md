@@ -48,16 +48,18 @@ healthsync query heart-rate --limit 10
 healthsync query steps --from 2024-01-01 --to 2024-06-30
 healthsync query workouts --format json
 healthsync query spo2 --format csv
+healthsync query resting-heart-rate --limit 30
+healthsync query blood-pressure --limit 20
+healthsync query body-mass --limit 30
 ```
-
-Available tables: `heart-rate`, `steps`, `spo2`, `vo2max`, `sleep`, `workouts`
 
 Output formats: `table` (default), `json`, `csv`
 
-Use `--total` with `steps` for deduplicated daily totals:
+Use `--total` with `steps`, `active-energy`, or `basal-energy` for deduplicated daily totals:
 
 ```bash
 healthsync query steps --total --from 2024-01-01
+healthsync query active-energy --total --from 2024-01-01
 ```
 
 ### AI agent skills
@@ -107,29 +109,83 @@ curl "http://localhost:8080/api/health/heart-rate?limit=5"
 
 ### Currently parsed
 
-| Table        | Apple Health Type                          | Fields                                                   |
-| ------------ | ------------------------------------------ | -------------------------------------------------------- |
-| `heart_rate` | `HKQuantityTypeIdentifierHeartRate`        | source, start/end date, value (BPM), unit                |
-| `steps`      | `HKQuantityTypeIdentifierStepCount`        | source, start/end date, value (count), unit              |
-| `spo2`       | `HKQuantityTypeIdentifierOxygenSaturation` | source, start/end date, value (0-1 fraction), unit       |
-| `vo2_max`    | `HKQuantityTypeIdentifierVO2Max`           | source, start/end date, value (mL/min·kg), unit          |
-| `sleep`      | `HKCategoryTypeIdentifierSleepAnalysis`    | source, start/end date, sleep stage                      |
-| `workouts`   | All `HKWorkoutActivityType*`               | type, source, start/end date, duration, distance, energy |
+**Cardiac / Vitals**
 
-### Available but not yet parsed
+| Table | Apple Health Type | Notes |
+|-------|-------------------|-------|
+| `heart_rate` | `HKQuantityTypeIdentifierHeartRate` | BPM |
+| `resting_heart_rate` | `HKQuantityTypeIdentifierRestingHeartRate` | Daily RHR |
+| `hrv` | `HKQuantityTypeIdentifierHeartRateVariabilitySDNN` | ms (SDNN) |
+| `heart_rate_recovery` | `HKQuantityTypeIdentifierHeartRateRecoveryOneMinute` | Post-exercise |
+| `respiratory_rate` | `HKQuantityTypeIdentifierRespiratoryRate` | Breaths/min |
+| `blood_pressure` | `HKQuantityTypeIdentifier BloodPressureSystolic/Diastolic` | Paired mmHg |
+| `spo2` | `HKQuantityTypeIdentifierOxygenSaturation` | 0-1 fraction |
+| `vo2_max` | `HKQuantityTypeIdentifierVO2Max` | mL/min·kg |
 
-These types exist in Apple Health exports but are not currently stored. Open an issue if you'd like support for any of these.
+**Activity / Energy**
 
-| Category     | Types                                                                                                                                                                    |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Vitals**   | RestingHeartRate, HeartRateVariabilitySDNN, HeartRateRecoveryOneMinute, RespiratoryRate, BloodPressureSystolic/Diastolic                                                 |
-| **Activity** | ActiveEnergyBurned, BasalEnergyBurned, AppleExerciseTime, AppleStandTime, FlightsClimbed, DistanceWalkingRunning, DistanceCycling                                        |
-| **Body**     | BodyMass, BodyMassIndex, Height                                                                                                                                          |
-| **Mobility** | WalkingSpeed, WalkingStepLength, WalkingAsymmetryPercentage, WalkingDoubleSupportPercentage, AppleWalkingSteadiness, StairAscent/DescentSpeed, SixMinuteWalkTestDistance |
-| **Running**  | RunningSpeed, RunningPower, RunningStrideLength, RunningGroundContactTime, RunningVerticalOscillation                                                                    |
-| **Audio**    | EnvironmentalAudioExposure, HeadphoneAudioExposure, EnvironmentalSoundReduction                                                                                          |
-| **Other**    | AppleSleepingWristTemperature, TimeInDaylight, DietaryWater, PhysicalEffort, WalkingHeartRateAverage                                                                     |
-| **Category** | MindfulSession, AppleStandHour, HandwashingEvent, ToothbrushingEvent, MenstrualFlow                                                                                      |
+| Table | Apple Health Type | Notes |
+|-------|-------------------|-------|
+| `steps` | `HKQuantityTypeIdentifierStepCount` | `--total` supported |
+| `active_energy` | `HKQuantityTypeIdentifierActiveEnergyBurned` | kcal; `--total` supported |
+| `basal_energy` | `HKQuantityTypeIdentifierBasalEnergyBurned` | kcal; `--total` supported |
+| `exercise_time` | `HKQuantityTypeIdentifierAppleExerciseTime` | Minutes |
+| `stand_time` | `HKQuantityTypeIdentifierAppleStandTime` | Minutes |
+| `flights_climbed` | `HKQuantityTypeIdentifierFlightsClimbed` | Count |
+| `distance_walking_running` | `HKQuantityTypeIdentifierDistanceWalkingRunning` | km/mi |
+| `distance_cycling` | `HKQuantityTypeIdentifierDistanceCycling` | km/mi |
+
+**Body**
+
+| Table | Apple Health Type | Notes |
+|-------|-------------------|-------|
+| `body_mass` | `HKQuantityTypeIdentifierBodyMass` | kg/lb |
+| `body_mass_index` | `HKQuantityTypeIdentifierBodyMassIndex` | |
+| `height` | `HKQuantityTypeIdentifierHeight` | m/ft |
+
+**Mobility / Walking**
+
+| Table | Apple Health Type |
+|-------|-------------------|
+| `walking_speed` | `HKQuantityTypeIdentifierWalkingSpeed` |
+| `walking_step_length` | `HKQuantityTypeIdentifierWalkingStepLength` |
+| `walking_asymmetry` | `HKQuantityTypeIdentifierWalkingAsymmetryPercentage` |
+| `walking_double_support` | `HKQuantityTypeIdentifierWalkingDoubleSupportPercentage` |
+| `walking_steadiness` | `HKQuantityTypeIdentifierAppleWalkingSteadiness` |
+| `stair_ascent_speed` | `HKQuantityTypeIdentifierStairAscentSpeed` |
+| `stair_descent_speed` | `HKQuantityTypeIdentifierStairDescentSpeed` |
+| `six_minute_walk` | `HKQuantityTypeIdentifierSixMinuteWalkTestDistance` |
+
+**Running**
+
+| Table | Apple Health Type |
+|-------|-------------------|
+| `running_speed` | `HKQuantityTypeIdentifierRunningSpeed` |
+| `running_power` | `HKQuantityTypeIdentifierRunningPower` |
+| `running_stride_length` | `HKQuantityTypeIdentifierRunningStrideLength` |
+| `running_ground_contact_time` | `HKQuantityTypeIdentifierRunningGroundContactTime` |
+| `running_vertical_oscillation` | `HKQuantityTypeIdentifierRunningVerticalOscillation` |
+
+**Sleep / Mindfulness / Other**
+
+| Table | Apple Health Type | Notes |
+|-------|-------------------|-------|
+| `sleep` | `HKCategoryTypeIdentifierSleepAnalysis` | Sleep stages (no unit) |
+| `mindful_sessions` | `HKCategoryTypeIdentifierMindfulSession` | Category (no unit) |
+| `stand_hours` | `HKCategoryTypeIdentifierAppleStandHour` | Category (no unit) |
+| `wrist_temperature` | `HKQuantityTypeIdentifierAppleSleepingWristTemperature` | °C deviation |
+| `time_in_daylight` | `HKQuantityTypeIdentifierTimeInDaylight` | Minutes |
+| `dietary_water` | `HKQuantityTypeIdentifierDietaryWater` | mL/L |
+| `physical_effort` | `HKQuantityTypeIdentifierPhysicalEffort` | MET |
+| `walking_heart_rate` | `HKQuantityTypeIdentifierWalkingHeartRateAverage` | BPM |
+| `workouts` | All `HKWorkoutActivityType*` | duration, distance, energy |
+
+### Not yet parsed
+
+| Category | Types |
+|----------|-------|
+| **Audio** | EnvironmentalAudioExposure, HeadphoneAudioExposure, EnvironmentalSoundReduction |
+| **Category** | HandwashingEvent, ToothbrushingEvent, MenstrualFlow |
 
 ## Design
 

@@ -55,19 +55,54 @@ healthsync query <table> [flags]
 | `--to` | Filter records to this date (inclusive) | — |
 | `--limit` | Maximum records to return | `50` |
 | `--format` | Output format: `table`, `json`, `csv` | `table` |
-| `--total` | Show deduplicated daily totals (steps only) | `false` |
+| `--total` | Deduplicated daily totals (`steps`, `active-energy`, `basal-energy`) | `false` |
 | `--db` | Path to SQLite database | `~/.healthsync/healthsync.db` |
 
 **Available tables:**
 
 | CLI Name | DB Table | Data |
 |----------|----------|------|
-| `heart-rate` | `heart_rate` | BPM readings |
-| `steps` | `steps` | Step counts |
+| `heart-rate` | `heart_rate` | BPM |
+| `resting-heart-rate` | `resting_heart_rate` | Daily RHR |
+| `hrv` | `hrv` | HRV SDNN (ms) |
+| `heart-rate-recovery` | `heart_rate_recovery` | Post-exercise HR recovery |
+| `respiratory-rate` | `respiratory_rate` | Breaths/min |
+| `blood-pressure` | `blood_pressure` | Systolic + diastolic (mmHg) |
+| `steps` | `steps` | Step counts — `--total` supported |
+| `active-energy` | `active_energy` | Active kcal — `--total` supported |
+| `basal-energy` | `basal_energy` | Resting kcal — `--total` supported |
+| `exercise-time` | `exercise_time` | Exercise minutes |
+| `stand-time` | `stand_time` | Stand minutes |
+| `flights-climbed` | `flights_climbed` | Flights of stairs |
+| `distance-walking-running` | `distance_walking_running` | Walk/run distance |
+| `distance-cycling` | `distance_cycling` | Cycling distance |
+| `body-mass` | `body_mass` | Body weight |
+| `bmi` | `body_mass_index` | BMI |
+| `height` | `height` | Height |
+| `walking-speed` | `walking_speed` | m/s |
+| `walking-step-length` | `walking_step_length` | m |
+| `walking-asymmetry` | `walking_asymmetry` | % |
+| `walking-double-support` | `walking_double_support` | % |
+| `walking-steadiness` | `walking_steadiness` | Score |
+| `stair-ascent-speed` | `stair_ascent_speed` | ft/s |
+| `stair-descent-speed` | `stair_descent_speed` | ft/s |
+| `six-minute-walk` | `six_minute_walk` | m |
+| `running-speed` | `running_speed` | m/s |
+| `running-power` | `running_power` | W |
+| `running-stride-length` | `running_stride_length` | m |
+| `running-ground-contact-time` | `running_ground_contact_time` | ms |
+| `running-vertical-oscillation` | `running_vertical_oscillation` | cm |
 | `spo2` | `spo2` | Blood oxygen (0-1 fraction) |
 | `vo2max` | `vo2_max` | VO2 Max (mL/min·kg) |
 | `sleep` | `sleep` | Sleep stages |
 | `workouts` | `workouts` | All workout types |
+| `wrist-temperature` | `wrist_temperature` | °C deviation |
+| `time-in-daylight` | `time_in_daylight` | Minutes |
+| `dietary-water` | `dietary_water` | mL/L |
+| `physical-effort` | `physical_effort` | MET |
+| `walking-heart-rate` | `walking_heart_rate` | BPM while walking |
+| `mindful-sessions` | `mindful_sessions` | Mindfulness sessions |
+| `stand-hours` | `stand_hours` | Stand hour achievements |
 
 **Examples:**
 
@@ -86,6 +121,15 @@ healthsync query spo2 --limit 0
 
 # Deduplicated daily step totals
 healthsync query steps --total --from 2024-01-01
+
+# Deduplicated daily active energy totals
+healthsync query active-energy --total --from 2024-01-01
+
+# Blood pressure history
+healthsync query blood-pressure --from 2024-01-01 --format json
+
+# Body weight trend
+healthsync query body-mass --limit 30
 ```
 
 ---

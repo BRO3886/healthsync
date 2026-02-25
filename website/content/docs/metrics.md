@@ -9,72 +9,85 @@ toc: true
 
 ## Currently parsed
 
+### Cardiac / Vitals
+
 | Table | Apple Health Type | Unit | Notes |
 |-------|-------------------|------|-------|
-| `heart_rate` | `HKQuantityTypeIdentifierHeartRate` | count/min (BPM) | |
-| `steps` | `HKQuantityTypeIdentifierStepCount` | count | |
-| `spo2` | `HKQuantityTypeIdentifierOxygenSaturation` | % (stored as 0-1 fraction) | 0.98 = 98% |
+| `heart_rate` | `HKQuantityTypeIdentifierHeartRate` | count/min (BPM) | High-frequency |
+| `resting_heart_rate` | `HKQuantityTypeIdentifierRestingHeartRate` | count/min | Daily reading |
+| `hrv` | `HKQuantityTypeIdentifierHeartRateVariabilitySDNN` | ms | Nightly SDNN |
+| `heart_rate_recovery` | `HKQuantityTypeIdentifierHeartRateRecoveryOneMinute` | count/min | Post-exercise |
+| `respiratory_rate` | `HKQuantityTypeIdentifierRespiratoryRate` | count/min | Breaths/min |
+| `blood_pressure` | `HKQuantityTypeIdentifierBloodPressureSystolic/Diastolic` | mmHg | Paired reading |
+| `spo2` | `HKQuantityTypeIdentifierOxygenSaturation` | % (stored 0-1) | 0.98 = 98% |
 | `vo2_max` | `HKQuantityTypeIdentifierVO2Max` | mL/min·kg | |
-| `sleep` | `HKCategoryTypeIdentifierSleepAnalysis` | — (category) | Sleep stages |
-| `workouts` | All `HKWorkoutActivityType*` | varies | Duration, distance, energy |
 
-## Available but not yet parsed
+### Activity / Energy
 
-These types exist in Apple Health exports. [Open an issue](https://github.com/BRO3886/healthsync/issues) if you'd like support for any of them.
-
-### Vitals
-
-| Type | Description |
-|------|-------------|
-| `HKQuantityTypeIdentifierRestingHeartRate` | Resting heart rate |
-| `HKQuantityTypeIdentifierHeartRateVariabilitySDNN` | HRV (SDNN) |
-| `HKQuantityTypeIdentifierHeartRateRecoveryOneMinute` | HR recovery after exercise |
-| `HKQuantityTypeIdentifierRespiratoryRate` | Breaths per minute |
-| `HKQuantityTypeIdentifierBloodPressureSystolic` | Blood pressure (systolic) |
-| `HKQuantityTypeIdentifierBloodPressureDiastolic` | Blood pressure (diastolic) |
-
-### Activity
-
-| Type | Description |
-|------|-------------|
-| `HKQuantityTypeIdentifierActiveEnergyBurned` | Active calories |
-| `HKQuantityTypeIdentifierBasalEnergyBurned` | Resting calories |
-| `HKQuantityTypeIdentifierAppleExerciseTime` | Exercise minutes |
-| `HKQuantityTypeIdentifierAppleStandTime` | Stand hours |
-| `HKQuantityTypeIdentifierFlightsClimbed` | Flights of stairs |
-| `HKQuantityTypeIdentifierDistanceWalkingRunning` | Walk/run distance |
-| `HKQuantityTypeIdentifierDistanceCycling` | Cycling distance |
+| Table | Apple Health Type | Unit | Notes |
+|-------|-------------------|------|-------|
+| `steps` | `HKQuantityTypeIdentifierStepCount` | count | `--total` supported |
+| `active_energy` | `HKQuantityTypeIdentifierActiveEnergyBurned` | kcal | `--total` supported |
+| `basal_energy` | `HKQuantityTypeIdentifierBasalEnergyBurned` | kcal | `--total` supported |
+| `exercise_time` | `HKQuantityTypeIdentifierAppleExerciseTime` | min | |
+| `stand_time` | `HKQuantityTypeIdentifierAppleStandTime` | min | |
+| `flights_climbed` | `HKQuantityTypeIdentifierFlightsClimbed` | count | |
+| `distance_walking_running` | `HKQuantityTypeIdentifierDistanceWalkingRunning` | km/mi | |
+| `distance_cycling` | `HKQuantityTypeIdentifierDistanceCycling` | km/mi | |
 
 ### Body
 
-| Type | Description |
-|------|-------------|
-| `HKQuantityTypeIdentifierBodyMass` | Body weight |
-| `HKQuantityTypeIdentifierBodyMassIndex` | BMI |
-| `HKQuantityTypeIdentifierHeight` | Height |
+| Table | Apple Health Type | Unit |
+|-------|-------------------|------|
+| `body_mass` | `HKQuantityTypeIdentifierBodyMass` | kg/lb |
+| `body_mass_index` | `HKQuantityTypeIdentifierBodyMassIndex` | count |
+| `height` | `HKQuantityTypeIdentifierHeight` | m/ft |
 
-### Mobility
+### Mobility / Walking
 
-| Type | Description |
-|------|-------------|
-| `HKQuantityTypeIdentifierWalkingSpeed` | Average walking speed |
-| `HKQuantityTypeIdentifierWalkingStepLength` | Average step length |
-| `HKQuantityTypeIdentifierWalkingAsymmetryPercentage` | Gait asymmetry |
-| `HKQuantityTypeIdentifierWalkingDoubleSupportPercentage` | Double support time |
-| `HKQuantityTypeIdentifierAppleWalkingSteadiness` | Walking steadiness score |
-| `HKQuantityTypeIdentifierStairAscentSpeed` | Stair climbing speed |
-| `HKQuantityTypeIdentifierStairDescentSpeed` | Stair descending speed |
-| `HKQuantityTypeIdentifierSixMinuteWalkTestDistance` | 6-minute walk test |
+| Table | Apple Health Type | Unit |
+|-------|-------------------|------|
+| `walking_speed` | `HKQuantityTypeIdentifierWalkingSpeed` | m/s |
+| `walking_step_length` | `HKQuantityTypeIdentifierWalkingStepLength` | m |
+| `walking_asymmetry` | `HKQuantityTypeIdentifierWalkingAsymmetryPercentage` | % |
+| `walking_double_support` | `HKQuantityTypeIdentifierWalkingDoubleSupportPercentage` | % |
+| `walking_steadiness` | `HKQuantityTypeIdentifierAppleWalkingSteadiness` | % |
+| `stair_ascent_speed` | `HKQuantityTypeIdentifierStairAscentSpeed` | ft/s |
+| `stair_descent_speed` | `HKQuantityTypeIdentifierStairDescentSpeed` | ft/s |
+| `six_minute_walk` | `HKQuantityTypeIdentifierSixMinuteWalkTestDistance` | m |
 
 ### Running metrics
 
-| Type | Description |
-|------|-------------|
-| `HKQuantityTypeIdentifierRunningSpeed` | Running pace |
-| `HKQuantityTypeIdentifierRunningPower` | Running power (watts) |
-| `HKQuantityTypeIdentifierRunningStrideLength` | Stride length |
-| `HKQuantityTypeIdentifierRunningGroundContactTime` | Ground contact time |
-| `HKQuantityTypeIdentifierRunningVerticalOscillation` | Vertical oscillation |
+| Table | Apple Health Type | Unit |
+|-------|-------------------|------|
+| `running_speed` | `HKQuantityTypeIdentifierRunningSpeed` | m/s |
+| `running_power` | `HKQuantityTypeIdentifierRunningPower` | W |
+| `running_stride_length` | `HKQuantityTypeIdentifierRunningStrideLength` | m |
+| `running_ground_contact_time` | `HKQuantityTypeIdentifierRunningGroundContactTime` | ms |
+| `running_vertical_oscillation` | `HKQuantityTypeIdentifierRunningVerticalOscillation` | cm |
+
+### Sleep / Mindfulness / Category
+
+| Table | Apple Health Type | Notes |
+|-------|-------------------|-------|
+| `sleep` | `HKCategoryTypeIdentifierSleepAnalysis` | Sleep stages — no unit column |
+| `mindful_sessions` | `HKCategoryTypeIdentifierMindfulSession` | Category — no unit column |
+| `stand_hours` | `HKCategoryTypeIdentifierAppleStandHour` | Category — no unit column |
+
+### Other
+
+| Table | Apple Health Type | Unit |
+|-------|-------------------|------|
+| `wrist_temperature` | `HKQuantityTypeIdentifierAppleSleepingWristTemperature` | °C deviation |
+| `time_in_daylight` | `HKQuantityTypeIdentifierTimeInDaylight` | min |
+| `dietary_water` | `HKQuantityTypeIdentifierDietaryWater` | mL/L |
+| `physical_effort` | `HKQuantityTypeIdentifierPhysicalEffort` | MET |
+| `walking_heart_rate` | `HKQuantityTypeIdentifierWalkingHeartRateAverage` | count/min |
+| `workouts` | All `HKWorkoutActivityType*` | varies |
+
+## Not yet parsed
+
+These types exist in Apple Health exports. [Open an issue](https://github.com/BRO3886/healthsync/issues) if you'd like support for any of them.
 
 ### Audio exposure
 
@@ -84,22 +97,10 @@ These types exist in Apple Health exports. [Open an issue](https://github.com/BR
 | `HKQuantityTypeIdentifierHeadphoneAudioExposure` | Headphone volume level |
 | `HKQuantityTypeIdentifierEnvironmentalSoundReduction` | Sound reduction |
 
-### Other
+### Other category types
 
 | Type | Description |
 |------|-------------|
-| `HKQuantityTypeIdentifierAppleSleepingWristTemperature` | Wrist temperature during sleep |
-| `HKQuantityTypeIdentifierTimeInDaylight` | Time spent in daylight |
-| `HKQuantityTypeIdentifierDietaryWater` | Water intake |
-| `HKQuantityTypeIdentifierPhysicalEffort` | Physical effort score |
-| `HKQuantityTypeIdentifierWalkingHeartRateAverage` | Average HR while walking |
-
-### Category types
-
-| Type | Description |
-|------|-------------|
-| `HKCategoryTypeIdentifierMindfulSession` | Mindfulness minutes |
-| `HKCategoryTypeIdentifierAppleStandHour` | Stand hour achievements |
 | `HKCategoryTypeIdentifierHandwashingEvent` | Handwashing events |
 | `HKCategoryTypeIdentifierToothbrushingEvent` | Toothbrushing events |
 | `HKCategoryTypeIdentifierMenstrualFlow` | Menstrual cycle tracking |

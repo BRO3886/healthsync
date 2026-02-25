@@ -38,7 +38,7 @@ func init() {
 	queryCmd.Flags().StringVar(&queryTo, "to", "", "filter records to this date (inclusive, e.g. 2024-12-31)")
 	queryCmd.Flags().IntVar(&queryLimit, "limit", 50, "maximum number of records to return")
 	queryCmd.Flags().StringVar(&queryFormat, "format", "table", "output format: table, json, csv")
-	queryCmd.Flags().BoolVar(&queryTotal, "total", false, "show deduplicated daily totals (steps only)")
+	queryCmd.Flags().BoolVar(&queryTotal, "total", false, "show deduplicated daily totals (steps, active-energy, basal-energy)")
 	rootCmd.AddCommand(queryCmd)
 }
 
@@ -49,8 +49,12 @@ func runQuery(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unknown table: %q (valid: %s)", table, strings.Join(storage.ValidTableNames(), ", "))
 	}
 
-	if queryTotal && table != "steps" {
-		return fmt.Errorf("--total is only supported for the steps table")
+	totalSupportedTables := map[string]bool{
+		"steps": true, "active-energy": true, "active_energy": true,
+		"basal-energy": true, "basal_energy": true,
+	}
+	if queryTotal && !totalSupportedTables[table] {
+		return fmt.Errorf("--total is only supported for: steps, active-energy, basal-energy")
 	}
 
 	db, err := storage.Open(dbPath)
@@ -67,9 +71,14 @@ func runQuery(cmd *cobra.Command, args []string) error {
 	}
 
 	var rows []map[string]interface{}
-	if queryTotal {
+	switch {
+	case queryTotal && table == "steps":
 		rows, err = db.QueryStepsDailyTotal(params)
-	} else {
+	case queryTotal && (table == "active-energy" || table == "active_energy"):
+		rows, err = db.QueryActiveEnergyDailyTotal(params)
+	case queryTotal && (table == "basal-energy" || table == "basal_energy"):
+		rows, err = db.QueryBasalEnergyDailyTotal(params)
+	default:
 		rows, err = db.QueryRows(params)
 	}
 	if err != nil {

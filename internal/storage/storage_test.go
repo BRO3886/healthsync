@@ -454,17 +454,19 @@ func TestCountRows_WithData(t *testing.T) {
 
 func TestValidTableNames(t *testing.T) {
 	names := ValidTableNames()
-	expected := map[string]bool{
-		"heart-rate": true, "steps": true, "spo2": true,
-		"vo2max": true, "sleep": true, "workouts": true,
-	}
-	if len(names) != len(expected) {
-		t.Errorf("expected %d names, got %d", len(expected), len(names))
-	}
+	// All original names must still be present
+	required := []string{"heart-rate", "steps", "spo2", "vo2max", "sleep", "workouts"}
+	nameSet := make(map[string]bool, len(names))
 	for _, n := range names {
-		if !expected[n] {
-			t.Errorf("unexpected table name: %s", n)
+		nameSet[n] = true
+	}
+	for _, r := range required {
+		if !nameSet[r] {
+			t.Errorf("required table name %q missing from ValidTableNames", r)
 		}
+	}
+	if len(names) < 41 {
+		t.Errorf("expected at least 41 table names, got %d", len(names))
 	}
 }
 
@@ -668,10 +670,264 @@ func TestSourcePriority(t *testing.T) {
 
 // --- TableNameMap ---
 
+func TestBatchInsert_NewQuantityTable(t *testing.T) {
+	db := tempDB(t)
+	cols := []string{"source_name", "start_date", "end_date", "value", "unit"}
+	records := [][]any{
+		{"Watch", "2024-01-01 00:00:00", "2024-01-01 00:01:00", 58.0, "count/min"},
+	}
+	stats, err := db.BatchInsertRecords("resting_heart_rate", cols, records)
+	if err != nil {
+		t.Fatalf("resting_heart_rate insert: %v", err)
+	}
+	if stats.Inserted != 1 {
+		t.Errorf("expected 1 inserted, got %d", stats.Inserted)
+	}
+}
+
+func TestBatchInsert_BloodPressureTable(t *testing.T) {
+	db := tempDB(t)
+	cols := []string{"source_name", "start_date", "end_date", "systolic", "diastolic", "unit"}
+	records := [][]any{
+		{"Watch", "2024-01-01 08:00:00", "2024-01-01 08:01:00", 120.0, 80.0, "mmHg"},
+	}
+	stats, err := db.BatchInsertRecords("blood_pressure", cols, records)
+	if err != nil {
+		t.Fatalf("blood_pressure insert: %v", err)
+	}
+	if stats.Inserted != 1 {
+		t.Errorf("expected 1 inserted, got %d", stats.Inserted)
+	}
+}
+
+func TestBatchInsert_MindfulSessionsTable(t *testing.T) {
+	db := tempDB(t)
+	cols := []string{"source_name", "start_date", "end_date", "value"}
+	records := [][]any{
+		{"Headspace", "2024-01-01 07:00:00", "2024-01-01 07:10:00", "HKCategoryValueNotApplicable"},
+	}
+	stats, err := db.BatchInsertRecords("mindful_sessions", cols, records)
+	if err != nil {
+		t.Fatalf("mindful_sessions insert: %v", err)
+	}
+	if stats.Inserted != 1 {
+		t.Errorf("expected 1 inserted, got %d", stats.Inserted)
+	}
+}
+
+func TestQueryActiveEnergyDailyTotal_Integration(t *testing.T) {
+	db := tempDB(t)
+	cols := []string{"source_name", "start_date", "end_date", "value", "unit"}
+	records := [][]any{
+		{"Watch", "2024-01-01 08:00:00", "2024-01-01 08:30:00", 200.0, "kcal"},
+		{"Watch", "2024-01-01 09:00:00", "2024-01-01 09:30:00", 150.0, "kcal"},
+		{"Watch", "2024-01-02 10:00:00", "2024-01-02 10:30:00", 400.0, "kcal"},
+	}
+	_, err := db.BatchInsertRecords("active_energy", cols, records)
+	if err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	results, err := db.QueryActiveEnergyDailyTotal(QueryParams{Table: "active-energy"})
+	if err != nil {
+		t.Fatalf("QueryActiveEnergyDailyTotal: %v", err)
+	}
+	if len(results) != 2 {
+		t.Fatalf("expected 2 days, got %d", len(results))
+	}
+	if results[0]["date"] != "2024-01-01" {
+		t.Errorf("expected 2024-01-01, got %v", results[0]["date"])
+	}
+	if results[0]["total"] != "350.00" {
+		t.Errorf("expected 350.00, got %v", results[0]["total"])
+	}
+	if results[1]["total"] != "400.00" {
+		t.Errorf("expected 400.00, got %v", results[1]["total"])
+	}
+}
+
+func TestQueryBasalEnergyDailyTotal_Integration(t *testing.T) {
+	db := tempDB(t)
+	cols := []string{"source_name", "start_date", "end_date", "value", "unit"}
+	records := [][]any{
+		{"Watch", "2024-01-01 00:00:00", "2024-01-01 01:00:00", 70.0, "kcal"},
+		{"Watch", "2024-01-01 01:00:00", "2024-01-01 02:00:00", 68.0, "kcal"},
+	}
+	_, err := db.BatchInsertRecords("basal_energy", cols, records)
+	if err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	results, err := db.QueryBasalEnergyDailyTotal(QueryParams{Table: "basal-energy"})
+	if err != nil {
+		t.Fatalf("QueryBasalEnergyDailyTotal: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 day, got %d", len(results))
+	}
+	if results[0]["total"] != "138.00" {
+		t.Errorf("expected 138.00, got %v", results[0]["total"])
+	}
+}
+
+func TestQueryRows_NewTablesAccessible(t *testing.T) {
+	db := tempDB(t)
+	newTables := []string{
+		"resting-heart-rate", "hrv", "heart-rate-recovery", "respiratory-rate",
+		"blood-pressure", "active-energy", "basal-energy",
+		"mindful-sessions", "stand-hours", "body-mass",
+		"walking-speed", "running-speed", "wrist-temperature",
+	}
+	for _, tbl := range newTables {
+		_, err := db.QueryRows(QueryParams{Table: tbl, Limit: 1})
+		if err != nil {
+			t.Errorf("table %q returned error: %v", tbl, err)
+		}
+	}
+}
+
 func TestTableNameMap_AllCLINamesResolve(t *testing.T) {
 	for _, name := range ValidTableNames() {
 		if _, ok := TableNameMap[name]; !ok {
 			t.Errorf("CLI name %q not in TableNameMap", name)
+		}
+	}
+}
+
+func TestQueryActiveEnergyDailyTotal_WithDateFilters(t *testing.T) {
+	db := tempDB(t)
+	cols := []string{"source_name", "start_date", "end_date", "value", "unit"}
+	records := [][]any{
+		{"Watch", "2024-01-01 08:00:00", "2024-01-01 08:30:00", 300.0, "kcal"},
+		{"Watch", "2024-01-02 08:00:00", "2024-01-02 08:30:00", 400.0, "kcal"},
+		{"Watch", "2024-01-03 08:00:00", "2024-01-03 08:30:00", 500.0, "kcal"},
+	}
+	db.BatchInsertRecords("active_energy", cols, records)
+
+	results, err := db.QueryActiveEnergyDailyTotal(QueryParams{
+		Table: "active-energy",
+		From:  "2024-01-02",
+		To:    "2024-01-02 23:59:59",
+	})
+	if err != nil {
+		t.Fatalf("QueryActiveEnergyDailyTotal: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 day, got %d", len(results))
+	}
+	if results[0]["date"] != "2024-01-02" {
+		t.Errorf("expected 2024-01-02, got %v", results[0]["date"])
+	}
+	if results[0]["total"] != "400.00" {
+		t.Errorf("expected 400.00, got %v", results[0]["total"])
+	}
+}
+
+func TestQueryBasalEnergyDailyTotal_WithDateFilters(t *testing.T) {
+	db := tempDB(t)
+	cols := []string{"source_name", "start_date", "end_date", "value", "unit"}
+	records := [][]any{
+		{"Watch", "2024-01-01 00:00:00", "2024-01-01 01:00:00", 70.0, "kcal"},
+		{"Watch", "2024-01-02 00:00:00", "2024-01-02 01:00:00", 68.0, "kcal"},
+		{"Watch", "2024-01-03 00:00:00", "2024-01-03 01:00:00", 72.0, "kcal"},
+	}
+	db.BatchInsertRecords("basal_energy", cols, records)
+
+	results, err := db.QueryBasalEnergyDailyTotal(QueryParams{
+		Table: "basal-energy",
+		From:  "2024-01-02",
+		To:    "2024-01-02 23:59:59",
+	})
+	if err != nil {
+		t.Fatalf("QueryBasalEnergyDailyTotal: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 day, got %d", len(results))
+	}
+	if results[0]["total"] != "68.00" {
+		t.Errorf("expected 68.00, got %v", results[0]["total"])
+	}
+}
+
+func TestQueryActiveEnergyDailyTotal_DeduplicationWatchBeatsIPhone(t *testing.T) {
+	db := tempDB(t)
+	cols := []string{"source_name", "start_date", "end_date", "value", "unit"}
+	// Watch and iPhone overlap — Watch should win
+	records := [][]any{
+		{"Sid's iPhone", "2024-01-01 08:00:00", "2024-01-01 08:30:00", 500.0, "kcal"},
+		{"Sid's Apple Watch", "2024-01-01 08:05:00", "2024-01-01 08:25:00", 300.0, "kcal"},
+		// Non-overlapping Watch record
+		{"Sid's Apple Watch", "2024-01-01 09:00:00", "2024-01-01 09:30:00", 200.0, "kcal"},
+	}
+	db.BatchInsertRecords("active_energy", cols, records)
+
+	results, err := db.QueryActiveEnergyDailyTotal(QueryParams{Table: "active-energy"})
+	if err != nil {
+		t.Fatalf("QueryActiveEnergyDailyTotal: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 day, got %d", len(results))
+	}
+	// Watch 300 (beats iPhone 500) + Watch 200 = 500.00
+	if results[0]["total"] != "500.00" {
+		t.Errorf("expected 500.00 (Watch wins dedup), got %v", results[0]["total"])
+	}
+}
+
+func TestQueryActiveEnergyDailyTotal_Empty(t *testing.T) {
+	db := tempDB(t)
+	results, err := db.QueryActiveEnergyDailyTotal(QueryParams{Table: "active-energy"})
+	if err != nil {
+		t.Fatalf("unexpected error on empty table: %v", err)
+	}
+	if len(results) != 0 {
+		t.Errorf("expected 0 results, got %d", len(results))
+	}
+}
+
+func TestQueryRows_BloodPressureColumns(t *testing.T) {
+	db := tempDB(t)
+	cols := []string{"source_name", "start_date", "end_date", "systolic", "diastolic", "unit"}
+	records := [][]any{
+		{"Watch", "2024-01-01 08:00:00", "2024-01-01 08:01:00", 120.0, 80.0, "mmHg"},
+	}
+	db.BatchInsertRecords("blood_pressure", cols, records)
+
+	rows, err := db.QueryRows(QueryParams{Table: "blood-pressure", Limit: 10})
+	if err != nil {
+		t.Fatalf("QueryRows blood-pressure: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 row, got %d", len(rows))
+	}
+	row := rows[0]
+	if _, ok := row["systolic"]; !ok {
+		t.Error("expected systolic column in result")
+	}
+	if _, ok := row["diastolic"]; !ok {
+		t.Error("expected diastolic column in result")
+	}
+	// Verify values are numeric
+	systolic, ok := row["systolic"].(float64)
+	if !ok {
+		t.Errorf("expected systolic to be float64, got %T", row["systolic"])
+	} else if systolic != 120.0 {
+		t.Errorf("expected systolic=120, got %v", systolic)
+	}
+	diastolic, ok := row["diastolic"].(float64)
+	if !ok {
+		t.Errorf("expected diastolic to be float64, got %T", row["diastolic"])
+	} else if diastolic != 80.0 {
+		t.Errorf("expected diastolic=80, got %v", diastolic)
+	}
+}
+
+func TestQueryRows_AllValidTablesAccessible(t *testing.T) {
+	db := tempDB(t)
+	for _, name := range ValidTableNames() {
+		_, err := db.QueryRows(QueryParams{Table: name, Limit: 1})
+		if err != nil {
+			t.Errorf("table %q returned error: %v", name, err)
 		}
 	}
 }
