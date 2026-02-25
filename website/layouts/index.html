@@ -1,12 +1,11 @@
 {{ define "main" }}
-
-{{/* ── Hero ── */}}
-<div class="home-hero-wrap">
+<div class="home">
   <div class="container">
+
+    {{/* ── Hero ── */}}
     <div class="home-hero">
-      <div class="home-eyebrow">Apple Health · SQLite · AI Agents</div>
-      <h1><span class="hs-accent">health</span>sync</h1>
-      <p class="home-desc">Parse your Apple Health export into a local SQLite database. Query it from the terminal — or let your AI coding agent ask the questions.</p>
+      <h1>healthsync</h1>
+      <p class="home-desc">Your Apple Health data, locally stored and queryable by AI agents. Parse exports into SQLite. Query from the CLI, or let your coding agent ask the questions.</p>
       <div class="home-links">
         <a href="/docs/getting-started/">Get Started</a>
         <a href="https://github.com/BRO3886/healthsync">GitHub</a>
@@ -20,172 +19,117 @@
         <span class="metric-badge"><span class="badge-dot badge-dot-workout"></span>Workouts</span>
       </div>
     </div>
-  </div>
-</div>
 
-{{/* ── Terminal ── */}}
-<div class="home-terminal-wrap">
-  <div class="container">
-    <div class="home-terminal">
-      <div class="terminal-bar">
-        <div class="terminal-dots">
-          <span></span><span></span><span></span>
-        </div>
-        <span class="terminal-title">zsh — healthsync</span>
-      </div>
-      <pre class="home-code"><code><span class="cmd-prompt">$</span> curl -fsSL https://healthsync.sidv.dev/install | bash
-<span class="cmd-comment"># Installing healthsync to /usr/local/bin...</span>
-✓ healthsync v0.3.0 installed
+    {{/* ── Code block ── */}}
+    <pre class="home-code"><code>$ curl -fsSL https://healthsync.sidv.dev/install | bash
 
-<span class="cmd-prompt">$</span> healthsync parse export.zip
+$ healthsync parse export.zip
   ⣾ 540,110 records · 1,011 workouts · 18,432/s · 30s
   Records:  540,110
   Workouts: 1,011
   Duration: 30.621s
 
-<span class="cmd-prompt">$</span> healthsync query heart-rate --limit 3
-┌──────────────────────────┬───────┬─────────────────────────────┐
-│ SOURCE_NAME              │ VALUE │ START_DATE                  │
-├──────────────────────────┼───────┼─────────────────────────────┤
-│ Siddhartha's Apple Watch │ 72    │ 2026-02-12 19:11:31 +0530   │
-│ Siddhartha's Apple Watch │ 68    │ 2026-02-12 19:06:22 +0530   │
-│ Siddhartha's Apple Watch │ 75    │ 2026-02-12 18:58:14 +0530   │
-└──────────────────────────┴───────┴─────────────────────────────┘
+$ healthsync query heart-rate --limit 3
+┌──────────────────────────┬───────┬──────────────────────────────┐
+│ SOURCE_NAME              │ VALUE │ START_DATE                   │
+├──────────────────────────┼───────┼──────────────────────────────┤
+│ Siddhartha's Apple Watch │ 72    │ 2026-02-12 19:11:31 +0530    │
+│ Siddhartha's Apple Watch │ 68    │ 2026-02-12 19:06:22 +0530    │
+│ Siddhartha's Apple Watch │ 75    │ 2026-02-12 18:58:14 +0530    │
+└──────────────────────────┴───────┴──────────────────────────────┘
 
-<span class="cmd-prompt">$</span> healthsync skills install <span class="cmd-comment"># teach your AI agent to query health data</span>
-✓ Installed to ~/.claude/skills/healthsync/</code></pre>
-    </div>
-  </div>
-</div>
+$ healthsync skills install   # teach your AI agent to query health data
+✓ Installed healthsync skill to ~/.claude/skills/healthsync/</code></pre>
 
-{{/* ── Content sections ── */}}
-<div class="home-sections">
-  <div class="container">
-
-    {{/* Agent feature */}}
+    {{/* ── Agent section ── */}}
     <div class="home-section">
-      <div class="home-section-header">
-        <span class="section-num">01</span>
-        <h2>Built for AI agents</h2>
-      </div>
-      <div class="agent-callout">
-        <div class="callout-label">Agent Skills</div>
-        <p>Run <code>healthsync skills install</code> to give Claude Code (and compatible agents) the schema, CLI reference, and SQL examples they need to query your health data in conversation.</p>
-        <ul>
-          <li>"What was my average resting heart rate last month?"</li>
-          <li>"How many hours did I sleep on average this week?"</li>
-          <li>"Show me my VO2 Max trend over the past year."</li>
-          <li>"Which workout type burns the most calories for me?"</li>
-        </ul>
-      </div>
-      <p style="font-size:0.83rem;color:var(--text-secondary)">The skill installs to <code>~/.claude/skills/healthsync/</code> and is automatically picked up by Claude Code on next session start.</p>
+      <h2>Built for AI agents</h2>
+      <p>Run <code>healthsync skills install</code> to give your AI coding agent the schema, CLI reference, and SQL examples it needs to answer questions about your health data directly in conversation.</p>
+      <ul class="agent-questions">
+        <li>"What was my average resting heart rate last month?"</li>
+        <li>"How many hours did I sleep on average this week?"</li>
+        <li>"Show me my VO2 Max trend over the past year."</li>
+        <li>"Which workout type burns the most calories for me?"</li>
+      </ul>
+      <p>The skill installs to <code>~/.claude/skills/healthsync/</code> and is picked up automatically by Claude Code and compatible agents on next session start.</p>
     </div>
 
-    {{/* Feature grid */}}
+    {{/* ── What it does ── */}}
     <div class="home-section">
-      <div class="home-section-header">
-        <span class="section-num">02</span>
-        <h2>What it does</h2>
-      </div>
-      <div class="home-grid">
-        <div class="home-grid-item">
-          <div class="grid-label">Parser</div>
-          <h3>Streaming XML</h3>
-          <p>Constant ~10MB memory footprint for 950MB+ exports. DTD-stripped via <code>io.Pipe</code>. 500k records in ~30 seconds.</p>
-        </div>
-        <div class="home-grid-item">
-          <div class="grid-label">Storage</div>
-          <h3>Pure Go SQLite</h3>
-          <p>WAL mode for concurrent reads. Batch inserts at 1,000 rows per transaction. <code>INSERT OR IGNORE</code> for automatic deduplication.</p>
-        </div>
-        <div class="home-grid-item">
-          <div class="grid-label">Server</div>
-          <h3>Async HTTP API</h3>
-          <p><code>POST /api/upload</code> returns <code>202 Accepted</code> immediately and parses in the background. Poll <code>/api/upload/status</code> for progress.</p>
-        </div>
-        <div class="home-grid-item">
-          <div class="grid-label">CLI</div>
-          <h3>6 queryable metrics</h3>
-          <ul>
-            <li>Heart rate, steps, sleep</li>
-            <li>Blood oxygen (SpO2), VO2 Max</li>
-            <li>Workouts with duration &amp; calories</li>
-            <li>Table, JSON, or CSV output</li>
-          </ul>
-        </div>
-      </div>
+      <h2>What it does</h2>
+      <ul class="feature-list">
+        <li><strong>Streaming parser</strong> Handles 950MB+ exports at constant ~10MB memory. 500k records in ~30 seconds.</li>
+        <li><strong>Local SQLite</strong> Stored at <code>~/.healthsync/healthsync.db</code>, WAL mode, auto-deduplication.</li>
+        <li><strong>6 metrics</strong> Heart rate, steps, sleep, SpO2, VO2 Max, and workouts with full metadata.</li>
+        <li><strong>Flexible output</strong> Table, JSON, or CSV. Date range filters with <code>--from</code> / <code>--to</code>.</li>
+        <li><strong>HTTP server</strong> Async upload via <code>POST /api/upload</code> — <code>202 Accepted</code> with progress polling. Works over Tailscale.</li>
+        <li><strong>Zero dependencies</strong> Single binary, no CGO, pure Go SQLite via <a href="https://pkg.go.dev/modernc.org/sqlite">modernc.org/sqlite</a>.</li>
+      </ul>
     </div>
 
-    {{/* Install */}}
+    {{/* ── Install ── */}}
     <div class="home-section">
-      <div class="home-section-header">
-        <span class="section-num">03</span>
-        <h2>Install</h2>
+      <h2>Install</h2>
+      <div class="install-block">
+        <span class="install-block-label">macOS / Linux</span>
+        <pre><code>curl -fsSL https://healthsync.sidv.dev/install | bash</code></pre>
       </div>
-      <div class="install-methods">
-        <div class="install-method">
-          <div class="install-method-label">macOS / Linux — one-liner</div>
-          <pre><code>curl -fsSL https://healthsync.sidv.dev/install | bash</code></pre>
-        </div>
-        <div class="install-method">
-          <div class="install-method-label">Go toolchain</div>
-          <pre><code>go install github.com/BRO3886/healthsync@latest</code></pre>
-        </div>
-        <div class="install-method">
-          <div class="install-method-label">Manual — download binary</div>
-          <pre><code>tar -xzf healthsync-darwin-arm64.tar.gz
+      <div class="install-block">
+        <span class="install-block-label">Go</span>
+        <pre><code>go install github.com/BRO3886/healthsync@latest</code></pre>
+      </div>
+      <div class="install-block">
+        <span class="install-block-label">Manual</span>
+        <pre><code>tar -xzf healthsync-darwin-arm64.tar.gz
 sudo mv healthsync /usr/local/bin/</code></pre>
-        </div>
       </div>
       <p class="install-note">Windows: download <code>healthsync-windows-amd64.zip</code> or <code>healthsync-windows-arm64.zip</code> from <a href="https://github.com/BRO3886/healthsync/releases/latest">GitHub Releases</a> and add the binary to your <code>PATH</code>.</p>
     </div>
 
-    {{/* Quick start */}}
+    {{/* ── Quick start ── */}}
     <div class="home-section">
-      <div class="home-section-header">
-        <span class="section-num">04</span>
-        <h2>Quick start</h2>
-      </div>
+      <h2>Quick start</h2>
       <ol>
         <li>
-          <span class="step-num">Step 01</span>
-          <strong>Export from iPhone</strong>
-          <p>Health app &rarr; Profile &rarr; Export All Health Data &rarr; save the <code>.zip</code></p>
+          <div class="step-body">
+            <strong>Export from iPhone</strong>
+            <p>Health app &rarr; Profile &rarr; Export All Health Data &rarr; save the <code>.zip</code></p>
+          </div>
         </li>
         <li>
-          <span class="step-num">Step 02</span>
-          <strong>Parse</strong>
-          <pre><code>healthsync parse export.zip -v</code></pre>
+          <div class="step-body">
+            <strong>Parse</strong>
+            <pre><code>healthsync parse export.zip -v</code></pre>
+          </div>
         </li>
         <li>
-          <span class="step-num">Step 03</span>
-          <strong>Query</strong>
-          <pre><code>healthsync query heart-rate --limit 10
+          <div class="step-body">
+            <strong>Query</strong>
+            <pre><code>healthsync query heart-rate --limit 10
 healthsync query steps --from 2024-01-01 --format json</code></pre>
+          </div>
         </li>
         <li>
-          <span class="step-num">Step 04</span>
-          <strong>Install agent skill</strong>
-          <pre><code>healthsync skills install</code></pre>
-          <p>Your AI agent can now query your health data directly in conversation.</p>
+          <div class="step-body">
+            <strong>Install agent skill</strong>
+            <pre><code>healthsync skills install</code></pre>
+            <p>Your AI agent can now query your health data directly in conversation.</p>
+          </div>
         </li>
       </ol>
     </div>
 
-    {{/* How it works */}}
+    {{/* ── How it works ── */}}
     <div class="home-section">
-      <div class="home-section-header">
-        <span class="section-num">05</span>
-        <h2>How it works</h2>
-      </div>
+      <h2>How it works</h2>
       <table>
         <thead><tr><th></th><th></th></tr></thead>
         <tbody>
           <tr><td>Parser</td><td>Streaming XML with DTD stripping via <code>io.Pipe</code>. Handles 500k+ records in ~30s.</td></tr>
-          <tr><td>Storage</td><td>Pure Go SQLite (<code>modernc.org/sqlite</code>). WAL mode, batch inserts (1000/tx), <code>UNIQUE</code> constraints for dedup.</td></tr>
+          <tr><td>Storage</td><td>Pure Go SQLite. WAL mode, batch inserts (1000/tx), <code>UNIQUE</code> constraints for dedup.</td></tr>
           <tr><td>Server</td><td>Chi router. <code>POST /api/upload</code> returns <code>202</code>, parses async, poll <code>GET /api/upload/status</code>.</td></tr>
           <tr><td>CLI</td><td>Cobra. <code>parse</code>, <code>query</code>, <code>server</code>, <code>skills</code> subcommands. <code>--db</code>, <code>--format</code>, <code>--from/--to</code> flags.</td></tr>
-          <tr><td>Skills</td><td><code>go:embed</code>. <code>healthsync skills install</code> writes schema + query docs to <code>~/.claude/skills/</code> for agent pickup.</td></tr>
+          <tr><td>Skills</td><td><code>go:embed</code>. Writes schema + query docs to <code>~/.claude/skills/</code> for agent pickup.</td></tr>
         </tbody>
       </table>
     </div>
