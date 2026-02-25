@@ -28,25 +28,34 @@ go test ./... -coverprofile=coverage.out && go tool cover -func=coverage.out
 ```
 
 ## Test Coverage (2026-02-25)
-- `internal/parser` — 86.9% (17 tests)
-- `internal/storage` — 85.5% (29 tests)
+- `internal/parser` — ~90% (~30 tests; expanded for 40+ metric types, blood pressure, category types)
+- `internal/storage` — ~88% (~55 tests; dedup, daily totals, all new tables)
 - `internal/server` — 73.7% (17 tests)
 - `internal/skills` — 8 tests (Install/Uninstall round-trip, idempotent reinstall, DetectAgents, etc.)
-- `cmd/` — 11 cases (formatCommas)
-- Total: 62 tests; 82-87% on core packages
+- `cmd/` — 13 cases (formatCommas, QueryTotalSupportedTables)
+- Total: ~86 tests; ~88-90% on core packages
 
 ## Key Technical Details
 
 ### XML Parsing
 - DTD must be stripped via `io.Pipe` goroutine (not `bufio.Scanner` + `MultiReader` — scanner consumes too many bytes)
 - Must NOT call `decoder.Skip()` on `<HealthData>` root element — it skips all children
-- Sleep records are `HKCategoryType` (no unit attribute) — `RecordColumns("sleep")` returns 4 columns, not 5
+- Category types (sleep, mindful_sessions, stand_hours) are `HKCategoryType` (no unit attribute) — `RecordColumns()` returns 4 columns, not 5; value stored as TEXT
+- Parser uses per-table `map[string][][]any` batch buffers — each table flushes at 1000 rows; all flush at EOF
+- Blood pressure staging: systolic + diastolic keyed by `{sourceName, startDate}`; row emitted only when both are staged; unpaired records silently dropped
 
 ### SQLite
 - WAL mode enabled for concurrent reads during server mode
 - `INSERT OR IGNORE` with UNIQUE constraints for dedup
 - Batch size: 1000 rows per transaction
 - DB path: `~/.healthsync/healthsync.db` (override with `--db`)
+- Schema variants: 5-col standard, 4-col no-unit (category types), 6-col blood_pressure, 10-col workouts
+
+### Query
+- `TableNameMap` maps both hyphen and underscore CLI names to DB table names (60+ entries)
+- `--format table|json|csv` — CSV/JSON use `sortedKeys()` for deterministic column order
+- `--total` routes to dedicated daily-total methods (NOT `QueryRows`) with overlap dedup
+- Source-priority deduplication: Watch=2 > iPhone=1 > other=0 (uses `strings.Contains` on sourceName)
 
 ### Server
 - `POST /api/upload` returns `202 Accepted`, parses async in goroutine
@@ -77,7 +86,8 @@ go test ./... -coverprofile=coverage.out && go tool cover -func=coverage.out
 - Tests use `testing/fstest.MapFS` as fake embedded FS (no real files needed)
 
 ## Latest Release
-- v0.3.0 — 6 platform archives: darwin/linux `.tar.gz` + windows `.zip` for arm64+amd64
+- v0.4.0 — 40+ Apple Health metrics, multi-format query output (table/json/csv), --total flag
+- v0.3.0 — skills install/uninstall/status command; 6 platform archives
 - `make release` builds all 6; `gh release create <tag> bin/*.tar.gz bin/*.zip`
 
 ## Conventions
