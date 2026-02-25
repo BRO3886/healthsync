@@ -231,7 +231,7 @@ p  { margin-bottom: 0.75rem; }
 .docs-layout {
   max-width: var(--container-max);
   margin: 0 auto;
-  padding: 1.5rem;
+  padding: 2.5rem 1.5rem;
   display: flex;
   gap: 0;
 }
@@ -239,16 +239,18 @@ p  { margin-bottom: 0.75rem; }
   flex: 1;
   min-width: 0;
   max-width: var(--content-max);
-  padding: 0 2rem;
+  padding: 0 2.5rem;
 }
 
 /* ── Docs Content ── */
-.docs-content h1 { margin-bottom: 1.25rem; }
-.docs-content h2 { padding-bottom: 0.25rem; border-bottom: 1px solid var(--border); }
+.docs-content h1 { margin-bottom: 1.5rem; }
+.docs-content h2 { padding-bottom: 0.35rem; border-bottom: 1px solid var(--border); margin-top: 2.5rem; margin-bottom: 0.85rem; }
+.docs-content h3 { margin-top: 2rem; margin-bottom: 0.5rem; }
 .docs-content h2 a, .docs-content h3 a, .docs-content h4 a { color: inherit; }
-.docs-content ul, .docs-content ol { margin-bottom: 0.75rem; padding-left: 1.5rem; }
-.docs-content li { margin-bottom: 0.2rem; }
-.docs-content li > p { margin-bottom: 0.4rem; }
+.docs-content ul, .docs-content ol { margin-bottom: 1rem; padding-left: 1.5rem; }
+.docs-content li { margin-bottom: 0.4rem; line-height: 1.65; }
+.docs-content li > p { margin-bottom: 0.5rem; }
+.docs-content p { line-height: 1.7; margin-bottom: 1rem; }
 
 /* Code */
 code {
@@ -262,11 +264,11 @@ pre {
   background: var(--bg-code);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 1rem 1.1rem;
+  padding: 1.1rem 1.25rem;
   overflow-x: auto;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1.25rem;
   font-size: 0.88rem;
-  line-height: 1.6;
+  line-height: 1.65;
 }
 pre code { background: none; padding: 0; border-radius: 0; font-size: inherit; }
 
