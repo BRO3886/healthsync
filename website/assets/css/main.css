@@ -339,6 +339,14 @@ blockquote p:last-child { margin-bottom: 0; }
   animation: fadeSlideUp 0.45s 0.07s ease both;
 }
 
+/* Peerlist badge */
+.peerlist-badge {
+  margin-bottom: 1.5rem;
+  animation: fadeSlideUp 0.45s 0.14s ease both;
+}
+.peerlist-badge a { display: inline-block; }
+.peerlist-badge img { border-radius: 8px; }
+
 /* CTA buttons */
 .home-links {
   display: flex;
