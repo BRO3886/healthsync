@@ -3,10 +3,95 @@ package storage
 import (
 	"database/sql"
 	"fmt"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
 )
+
+// TableInfo holds per-table stats for db info output.
+type TableInfo struct {
+	Name     string
+	RowCount int64
+	LastDate string // MAX(start_date)
+}
+
+// DBInfo holds overall database statistics.
+type DBInfo struct {
+	Path       string
+	FileSizeMB float64
+	Tables     []TableInfo // only non-empty tables, sorted by row count desc
+	TotalRows  int64
+}
+
+// GetDBInfo returns statistics about the database at dbPath.
+func (db *DB) GetDBInfo(dbPath string) (*DBInfo, error) {
+	info := &DBInfo{Path: dbPath}
+
+	// File size
+	if fi, err := os.Stat(dbPath); err == nil {
+		info.FileSizeMB = float64(fi.Size()) / (1024 * 1024)
+	}
+
+	// List all user tables
+	rows, err := db.conn.Query(`SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name`)
+	if err != nil {
+		return nil, fmt.Errorf("listing tables: %w", err)
+	}
+	defer rows.Close()
+
+	var tableNames []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		tableNames = append(tableNames, name)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	for _, name := range tableNames {
+		var count int64
+		var lastDate sql.NullString
+
+		err := db.conn.QueryRow(
+			fmt.Sprintf(`SELECT COUNT(*), MAX(start_date) FROM %s`, name),
+		).Scan(&count, &lastDate)
+		if err != nil {
+			// Table may not have start_date (shouldn't happen but be safe)
+			continue
+		}
+
+		if count == 0 {
+			continue
+		}
+
+		t := TableInfo{
+			Name:     name,
+			RowCount: count,
+		}
+		if lastDate.Valid {
+			// Trim to YYYY-MM-DD
+			if len(lastDate.String) >= 10 {
+				t.LastDate = lastDate.String[:10]
+			} else {
+				t.LastDate = lastDate.String
+			}
+		}
+
+		info.Tables = append(info.Tables, t)
+		info.TotalRows += count
+	}
+
+	// Sort by row count descending
+	sort.Slice(info.Tables, func(i, j int) bool {
+		return info.Tables[i].RowCount > info.Tables[j].RowCount
+	})
+
+	return info, nil
+}
 
 // QueryParams holds filters for querying health data.
 type QueryParams struct {
