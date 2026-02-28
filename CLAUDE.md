@@ -88,7 +88,16 @@ go test ./... -coverprofile=coverage.out && go tool cover -func=coverage.out
 ## Latest Release
 - v0.4.0 — 40+ Apple Health metrics, multi-format query output (table/json/csv), --total flag
 - v0.3.0 — skills install/uninstall/status command; 6 platform archives
-- `make release` builds all 6; `gh release create <tag> bin/*.tar.gz bin/*.zip`
+
+## Release Process
+Steps in order — do not skip or reorder:
+1. `git push` — push all commits to main **first**. Never tag unpushed commits.
+2. `git tag vX.Y.Z` — tag after push so the tag points to a commit already on remote main
+3. `git push origin vX.Y.Z` — push the tag explicitly
+4. `make release` — builds all 6 archives (`bin/*.tar.gz bin/*.zip`)
+5. `gh release create vX.Y.Z bin/*.tar.gz bin/*.zip`
+
+- **CRITICAL: Push before tag.** Tagging an unpushed commit then running `gh release create` pushes the tag + that commit but leaves `main` behind on remote — release binary is built from code not reachable from main.
 
 ## Conventions
 - Conventional commits
