@@ -170,7 +170,7 @@ Manage the healthsync AI agent skill — install, uninstall, or check status.
 healthsync skills <subcommand> [flags]
 ```
 
-The skill teaches AI coding agents (Claude Code, Codex CLI, etc.) how to query your Apple Health data. It includes the database schema, CLI reference, and SQL query examples. Once installed, agents pick it up automatically on next session start.
+The skill teaches AI coding agents (Claude Code, Codex CLI, OpenClaw, etc.) how to query your Apple Health data. It includes the database schema, CLI reference, and SQL query examples. Once installed, agents pick it up automatically on next session start.
 
 ### `healthsync skills install`
 
@@ -180,7 +180,7 @@ healthsync skills install [--agent <target>]
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--agent` | Agent target: `claude`, `codex`, or `all` | interactive picker |
+| `--agent` | Agent target: `claude`, `codex`, `openclaw`, or `all` | interactive picker |
 
 **Install destinations:**
 
@@ -188,6 +188,7 @@ healthsync skills install [--agent <target>]
 |-------|-----------|
 | `claude` | `~/.claude/skills/healthsync/` |
 | `codex` | `~/.agents/skills/healthsync/` |
+| `openclaw` | `~/.openclaw/skills/healthsync/` |
 
 **Examples:**
 
@@ -223,9 +224,10 @@ healthsync skills status
 Shows whether the skill is installed for each supported agent, and whether the installed version matches the current binary.
 
 ```
-healthsync skill (binary v0.3.0):
-  ✓ claude       ~/.claude/skills/healthsync/ (installed v0.3.0)
+healthsync skill (binary v0.5.0):
+  ✓ claude       ~/.claude/skills/healthsync/ (installed v0.5.0)
   ✗ codex        ~/.agents/skills/healthsync/ (not installed)
+  ✗ OpenClaw     ~/.openclaw/skills/healthsync/ (not installed)
 ```
 
 ---

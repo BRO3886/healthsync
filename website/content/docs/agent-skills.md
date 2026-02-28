@@ -28,6 +28,9 @@ healthsync skills install --agent claude
 # Codex CLI
 healthsync skills install --agent codex
 
+# OpenClaw
+healthsync skills install --agent openclaw
+
 # All supported agents
 healthsync skills install --agent all
 ```
@@ -38,6 +41,7 @@ healthsync skills install --agent all
 |-------|----------------|
 | `claude` | `~/.claude/skills/healthsync/` |
 | `codex` | `~/.agents/skills/healthsync/` |
+| `openclaw` | `~/.openclaw/skills/healthsync/` |
 
 The skill is automatically detected and loaded by the agent on the next session start — no configuration needed.
 
@@ -85,9 +89,10 @@ healthsync skills status
 ```
 
 ```
-healthsync skill (binary v0.3.0):
-  ✓ claude       ~/.claude/skills/healthsync/ (installed v0.3.0)
+healthsync skill (binary v0.5.0):
+  ✓ claude       ~/.claude/skills/healthsync/ (installed v0.5.0)
   ✗ codex        ~/.agents/skills/healthsync/ (not installed)
+  ✗ OpenClaw     ~/.openclaw/skills/healthsync/ (not installed)
 ```
 
 The status command shows whether the installed version matches the current binary. If outdated, re-run `healthsync skills install` to update.

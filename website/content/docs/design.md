@@ -93,6 +93,7 @@ Supported agent targets:
 |-----|-----------|-------------------|
 | `claude` | `~/.claude/skills/healthsync/` | Claude Code, Copilot, Cursor, OpenCode, Augment |
 | `codex` | `~/.agents/skills/healthsync/` | Codex CLI, Copilot, Windsurf, OpenCode, Augment |
+| `openclaw` | `~/.openclaw/skills/healthsync/` | OpenClaw |
 
 ## Dependencies
 

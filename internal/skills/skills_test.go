@@ -3,6 +3,7 @@ package skills_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -22,14 +23,26 @@ func makeTestFS() fstest.MapFS {
 
 func TestDefaultTargets(t *testing.T) {
 	targets := skills.DefaultTargets("/home/user")
-	if len(targets) != 2 {
-		t.Fatalf("expected 2 targets, got %d", len(targets))
+	if len(targets) != 3 {
+		t.Fatalf("expected 3 targets, got %d", len(targets))
 	}
 	if targets[0].Key != "claude" {
 		t.Errorf("expected first target key 'claude', got %q", targets[0].Key)
 	}
 	if targets[1].Key != "codex" {
 		t.Errorf("expected second target key 'codex', got %q", targets[1].Key)
+	}
+	if targets[2].Key != "openclaw" {
+		t.Errorf("expected third target key 'openclaw', got %q", targets[2].Key)
+	}
+	if targets[2].Name != "OpenClaw" {
+		t.Errorf("expected third target name 'OpenClaw', got %q", targets[2].Name)
+	}
+	if !filepath.IsAbs(targets[2].BaseDir) {
+		t.Errorf("expected absolute BaseDir, got %q", targets[2].BaseDir)
+	}
+	if !strings.Contains(targets[2].BaseDir, ".openclaw/skills") {
+		t.Errorf("expected BaseDir to contain '.openclaw/skills', got %q", targets[2].BaseDir)
 	}
 }
 
@@ -175,6 +188,11 @@ func TestDetectAgents(t *testing.T) {
 			Name:    "Codex CLI",
 			Key:     "codex",
 			BaseDir: filepath.Join(tmpDir, ".agents", "skills"),
+		},
+		{
+			Name:    "OpenClaw",
+			Key:     "openclaw",
+			BaseDir: filepath.Join(tmpDir, ".openclaw", "skills"),
 		},
 	}
 

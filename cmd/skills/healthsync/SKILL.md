@@ -4,10 +4,37 @@ description: Queries Apple Health data stored in a local SQLite database. Use th
 metadata:
   author: sidv
   version: "1.1"
-compatibility: Requires healthsync binary built from source. Database at ~/.healthsync/healthsync.db must be populated via `healthsync parse`.
+compatibility: Requires healthsync binary. Database at ~/.healthsync/healthsync.db must be populated via `healthsync parse`.
 ---
 
 # healthsync — Apple Health Data Query Skill
+
+## Installing healthsync
+
+```bash
+# macOS and Linux (recommended)
+curl -fsSL https://healthsync.sidv.dev/install | bash
+
+# Or via Go
+go install github.com/BRO3886/healthsync@latest
+```
+
+After installing the binary, parse your Apple Health export:
+
+```bash
+# Export from Health app → profile picture → Export All Health Data
+healthsync parse ~/Downloads/export.zip
+```
+
+Install this skill into your agent:
+
+```bash
+# Claude Code or Codex
+healthsync skills install
+
+# OpenClaw
+healthsync skills install --agent openclaw
+```
 
 Query Apple Health export data stored in a local SQLite database. This skill is **read-only** — never INSERT, UPDATE, DELETE, or DROP anything.
 

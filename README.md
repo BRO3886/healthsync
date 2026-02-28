@@ -2,7 +2,7 @@
 
 Parse Apple Health exports into a local SQLite database — queryable by AI agents, the CLI, or directly via SQL.
 
-The primary motivation is to make your Apple Health data accessible to AI coding agents. Run `healthsync skills install` to give Claude Code or Codex CLI the schema, CLI reference, and SQL examples it needs to answer questions about your health data in conversation.
+The primary motivation is to make your Apple Health data accessible to AI coding agents. Run `healthsync skills install` to give Claude Code, Codex CLI, or OpenClaw the schema, CLI reference, and SQL examples it needs to answer questions about your health data in conversation.
 
 **Docs**: [healthsync.sidv.dev](https://healthsync.sidv.dev)
 
@@ -70,7 +70,7 @@ Install the healthsync skill to teach your AI coding agent how to query your hea
 healthsync skills install
 ```
 
-This writes the database schema, CLI reference, and SQL query examples to `~/.claude/skills/healthsync/` (Claude Code) or `~/.agents/skills/healthsync/` (Codex CLI). The agent picks it up automatically on the next session start and can then answer questions like "What was my average heart rate last week?" by running queries against your local database.
+This writes the database schema, CLI reference, and SQL query examples to `~/.claude/skills/healthsync/` (Claude Code), `~/.agents/skills/healthsync/` (Codex CLI), or `~/.openclaw/skills/healthsync/` (OpenClaw). The agent picks it up automatically on the next session start and can then answer questions like "What was my average heart rate last week?" by running queries against your local database.
 
 ```bash
 # Check installation status
