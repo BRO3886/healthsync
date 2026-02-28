@@ -2,6 +2,7 @@
 title: "Server API"
 description: "HTTP API reference for the healthsync server."
 date: 2026-02-12T00:00:00+05:30
+lastmod: 2026-02-28T00:00:00+05:30
 draft: false
 weight: 300
 toc: true

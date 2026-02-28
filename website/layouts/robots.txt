@@ -1,0 +1,20 @@
+User-agent: *
+Allow: /
+
+# AI crawlers — explicitly welcome
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+Sitemap: {{ .Site.BaseURL }}sitemap.xml

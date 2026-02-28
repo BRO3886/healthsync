@@ -2,6 +2,7 @@
 title: "Agent Skills"
 description: "Let your AI coding agent query your Apple Health data directly."
 date: 2026-02-25T00:00:00+05:30
+lastmod: 2026-02-28T00:00:00+05:30
 draft: false
 weight: 250
 toc: true

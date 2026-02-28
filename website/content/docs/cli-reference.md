@@ -2,6 +2,7 @@
 title: "CLI Reference"
 description: "Complete reference for all healthsync commands and flags."
 date: 2026-02-12T00:00:00+05:30
+lastmod: 2026-02-28T00:00:00+05:30
 draft: false
 weight: 200
 toc: true

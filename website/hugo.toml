@@ -1,10 +1,17 @@
 title = "healthsync"
-baseurl = "/"
+baseurl = "https://healthsync.sidv.dev/"
 disableHugoGeneratorInject = true
 enableEmoji = true
 enableRobotsTXT = true
 languageCode = "en-US"
 copyRight = "Copyright (c) 2026 Siddhartha Varma"
+
+[params]
+  description = "Your Apple Health data, locally stored and queryable by AI agents. Parse exports into SQLite."
+  author = "Siddhartha Varma"
+  twitterHandle = "@sidv_dev"
+  ogImage = "/cover.png"
+  githubRepo = "https://github.com/BRO3886/healthsync"
 
 [sitemap]
   changefreq = "monthly"

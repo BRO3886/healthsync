@@ -2,6 +2,7 @@
 title: "Database Schema"
 description: "SQLite table definitions and query examples."
 date: 2026-02-12T00:00:00+05:30
+lastmod: 2026-02-28T00:00:00+05:30
 draft: false
 weight: 400
 toc: true

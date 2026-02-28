@@ -2,6 +2,7 @@
 title: "Supported Metrics"
 description: "What Apple Health data healthsync parses, and what's available for future support."
 date: 2026-02-12T00:00:00+05:30
+lastmod: 2026-02-28T00:00:00+05:30
 draft: false
 weight: 500
 toc: true

@@ -1,7 +1,121 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ if .IsHome }}{{ .Site.Title }}{{ else }}{{ .Title }} — {{ .Site.Title }}{{ end }}</title>
+<meta name="theme-color" content="#007AFF">
+<title>{{ if .IsHome }}{{ .Site.Title }} — Apple Health to SQLite for AI agents{{ else }}{{ .Title }} — {{ .Site.Title }}{{ end }}</title>
 <meta name="description" content="{{ .Description | default .Site.Params.description }}">
+<meta name="author" content="{{ .Site.Params.author }}">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+
+{{/* ── Canonical ── */}}
+<link rel="canonical" href="{{ .Permalink }}">
+
+{{/* ── Open Graph ── */}}
+<meta property="og:type" content="{{ if .IsHome }}website{{ else }}article{{ end }}">
+<meta property="og:url" content="{{ .Permalink }}">
+<meta property="og:title" content="{{ if .IsHome }}{{ .Site.Title }} — Apple Health to SQLite for AI agents{{ else }}{{ .Title }} — {{ .Site.Title }}{{ end }}">
+<meta property="og:description" content="{{ .Description | default .Site.Params.description }}">
+<meta property="og:image" content="{{ .Site.BaseURL | strings.TrimSuffix "/" }}{{ .Site.Params.ogImage }}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:site_name" content="{{ .Site.Title }}">
+<meta property="og:locale" content="en_US">
+
+{{/* ── Twitter Card ── */}}
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="{{ .Site.Params.twitterHandle }}">
+<meta name="twitter:creator" content="{{ .Site.Params.twitterHandle }}">
+<meta name="twitter:title" content="{{ if .IsHome }}{{ .Site.Title }} — Apple Health to SQLite for AI agents{{ else }}{{ .Title }} — {{ .Site.Title }}{{ end }}">
+<meta name="twitter:description" content="{{ .Description | default .Site.Params.description }}">
+<meta name="twitter:image" content="{{ .Site.BaseURL | strings.TrimSuffix "/" }}{{ .Site.Params.ogImage }}">
+
+{{/* ── JSON-LD Structured Data ── */}}
+{{ if .IsHome }}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "name": "healthsync",
+      "description": "{{ .Site.Params.description }}",
+      "url": "{{ .Site.BaseURL }}",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "macOS, Linux, Windows",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "author": {
+        "@type": "Person",
+        "name": "{{ .Site.Params.author }}"
+      },
+      "downloadUrl": "{{ .Site.Params.githubRepo }}/releases/latest",
+      "codeRepository": "{{ .Site.Params.githubRepo }}",
+      "programmingLanguage": "Go",
+      "softwareVersion": "0.5.0",
+      "license": "https://opensource.org/licenses/MIT",
+      "keywords": "apple health, sqlite, cli, health data, ai agent, health export, go, golang"
+    },
+    {
+      "@type": "WebSite",
+      "url": "{{ .Site.BaseURL }}",
+      "name": "{{ .Site.Title }}",
+      "description": "{{ .Site.Params.description }}"
+    }
+  ]
+}
+</script>
+{{ else if .Section }}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "headline": "{{ .Title }}",
+      "description": "{{ .Description | default .Site.Params.description }}",
+      "url": "{{ .Permalink }}",
+      "author": {
+        "@type": "Person",
+        "name": "{{ .Site.Params.author }}"
+      },
+      "datePublished": "{{ .Date.Format "2006-01-02" }}",
+      "dateModified": "{{ .Lastmod.Format "2006-01-02" }}",
+      "isPartOf": {
+        "@type": "WebSite",
+        "url": "{{ .Site.BaseURL }}",
+        "name": "{{ .Site.Title }}"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "{{ .Site.BaseURL }}"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Docs",
+          "item": "{{ .Site.BaseURL }}docs/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "{{ .Title }}",
+          "item": "{{ .Permalink }}"
+        }
+      ]
+    }
+  ]
+}
+</script>
+{{ end }}
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">

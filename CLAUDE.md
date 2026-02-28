@@ -93,3 +93,4 @@ go test ./... -coverprofile=coverage.out && go tool cover -func=coverage.out
 ## Conventions
 - Conventional commits
 - No mocks — tests use real temp SQLite databases
+- Be proactive, not reactive — when given a task, just do it; don't ask for approval before starting
