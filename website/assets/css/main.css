@@ -582,7 +582,7 @@ blockquote p:last-child { margin-bottom: 0; }
   flex-shrink: 0;
   margin-top: 0.1rem;
 }
-.step-body { display: flex; flex-direction: column; gap: 0.35rem; flex: 1; }
+.step-body { display: flex; flex-direction: column; gap: 0.35rem; flex: 1; min-width: 0; }
 .step-body strong { font-size: 0.97rem; font-weight: 600; }
 .step-body p { margin: 0; font-size: 0.9rem; color: var(--text-secondary); }
 .step-body pre { margin: 0; }
@@ -695,6 +695,31 @@ blockquote p:last-child { margin-bottom: 0; }
   .home       { padding: 3rem 0 4rem; }
   .home-hero h1 { font-size: 2.1rem; }
   .home-desc    { font-size: 1rem; }
+
+  /* Feature list: switch from flex to block so code/path strings wrap naturally */
+  .feature-list li {
+    display: block;
+  }
+  .feature-list li strong {
+    display: block;
+    margin-bottom: 0.25rem;
+  }
+
+  /* How it works table: scroll within its container rather than pushing layout */
+  .home-section table {
+    display: block;
+    overflow-x: auto;
+  }
+
+  /* Terminal: smaller font so content is at least partially readable before scrolling */
+  .home-code {
+    font-size: 0.76rem;
+  }
+
+  /* Install / quick-start pre: ensure the code block never blows out the container */
+  pre {
+    max-width: 100%;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
