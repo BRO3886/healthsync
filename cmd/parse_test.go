@@ -34,13 +34,14 @@ func TestQueryTotalSupportedTables(t *testing.T) {
 	supported := map[string]bool{
 		"steps": true, "active-energy": true, "active_energy": true,
 		"basal-energy": true, "basal_energy": true,
+		"sleep": true,
 	}
 	for tbl := range supported {
 		if !supported[tbl] {
 			t.Errorf("expected %q to be supported for --total", tbl)
 		}
 	}
-	unsupported := []string{"hrv", "heart-rate", "sleep", "blood-pressure", "body-mass", "workouts"}
+	unsupported := []string{"hrv", "heart-rate", "blood-pressure", "body-mass", "workouts"}
 	for _, tbl := range unsupported {
 		if supported[tbl] {
 			t.Errorf("expected %q to NOT be supported for --total", tbl)

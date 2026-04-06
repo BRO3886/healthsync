@@ -183,10 +183,10 @@ func parseXML(r io.Reader, db *storage.DB, progress ProgressFunc) (*ParseResult,
 
 			// Blood pressure: stage both values; only emit row when pair is complete.
 			if table == "blood_pressure_systolic" || table == "blood_pressure_diastolic" {
-				key := bpKey{rec.SourceName, rec.StartDate}
+				key := bpKey{rec.SourceName, normalizeTimestamp(rec.StartDate)}
 				e, exists := bpStaging[key]
 				if !exists {
-					e = &bpEntry{endDate: rec.EndDate, unit: rec.Unit}
+					e = &bpEntry{endDate: normalizeTimestamp(rec.EndDate), unit: rec.Unit}
 					bpStaging[key] = e
 				}
 				v := parseFloat(rec.Value)
@@ -212,11 +212,13 @@ func parseXML(r io.Reader, db *storage.DB, progress ProgressFunc) (*ParseResult,
 				continue
 			}
 
+			startDate := normalizeTimestamp(rec.StartDate)
+			endDate := normalizeTimestamp(rec.EndDate)
 			var row []any
 			if noUnitTables[table] {
-				row = []any{rec.SourceName, rec.StartDate, rec.EndDate, rec.Value}
+				row = []any{rec.SourceName, startDate, endDate, rec.Value}
 			} else {
-				row = []any{rec.SourceName, rec.StartDate, rec.EndDate, parseFloat(rec.Value), rec.Unit}
+				row = []any{rec.SourceName, startDate, endDate, parseFloat(rec.Value), rec.Unit}
 			}
 			buffers[table] = append(buffers[table], row)
 			recordCount++
@@ -260,7 +262,7 @@ func parseXML(r io.Reader, db *storage.DB, progress ProgressFunc) (*ParseResult,
 			totalEnergy := parseFloat(w.TotalEnergyBurned)
 
 			row := []any{
-				w.ActivityType, w.SourceName, w.StartDate, w.EndDate,
+				w.ActivityType, w.SourceName, normalizeTimestamp(w.StartDate), normalizeTimestamp(w.EndDate),
 				duration, nilIfEmpty(w.DurationUnit),
 				totalDistance, nilIfEmpty(w.TotalDistanceUnit),
 				totalEnergy, nilIfEmpty(w.TotalEnergyBurnedUnit),
@@ -327,6 +329,20 @@ func parseFloat(s string) any {
 func nilIfEmpty(s string) any {
 	if s == "" {
 		return nil
+	}
+	return s
+}
+
+// normalizeTimestamp strips the trailing timezone offset (e.g. " +0530", " -0800")
+// from Apple Health timestamps, leaving plain "YYYY-MM-DD HH:MM:SS" local time.
+// This is required because SQLite's julianday()/date() cannot parse the
+// space-separated ±HHMM offset format that Apple Health uses.
+func normalizeTimestamp(s string) string {
+	// Apple Health format: "2024-01-01 22:00:00 +0530"
+	// We want: "2024-01-01 22:00:00"
+	// The timestamp portion is always 19 chars ("YYYY-MM-DD HH:MM:SS").
+	if len(s) > 19 && s[19] == ' ' {
+		return s[:19]
 	}
 	return s
 }

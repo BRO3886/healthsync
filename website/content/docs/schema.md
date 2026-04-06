@@ -90,7 +90,7 @@ CREATE TABLE sleep (
 );
 ```
 
-> **Note:** The sleep table has no `unit` column — it stores category values, not quantities.
+> **Note:** The sleep table has no `unit` column — it stores category values, not quantities. Supports `--total` for nightly sleep duration totals (hours).
 
 **Sleep stage values:**
 
@@ -305,13 +305,15 @@ Common `activity_type` values: `HKWorkoutActivityTypeRunning`, `HKWorkoutActivit
 
 ## Date format
 
-All dates are stored as text in Apple Health format:
+All dates are stored as text in local time (timezone offset stripped during parsing):
 
 ```
-2024-01-15 08:30:00 +0530
+2024-01-15 08:30:00
 ```
 
-When filtering with `--from` / `--to`, use date prefixes — SQLite does string comparison, so `2024-01-01` matches all timestamps on that day.
+This format is compatible with SQLite's `date()`, `julianday()`, and other date functions. When filtering with `--from` / `--to`, use date prefixes — SQLite does string comparison, so `2024-01-01` matches all timestamps on that day.
+
+> **Note:** If you have an existing database from a pre-v0.5.0 parse, re-run `healthsync parse` on your export to get normalized timestamps. Old-format timestamps with timezone offsets (e.g. `+0530`) cause `julianday()` to return NULL.
 
 ## Useful queries
 
@@ -340,8 +342,10 @@ LIMIT 30;
 
 ### Sleep duration per night
 
+Use `healthsync query sleep --total` for nightly sleep totals via the CLI, or query directly:
+
 ```sql
-SELECT date(start_date) as night,
+SELECT date(start_date, '-6 hours') as night,
   ROUND(SUM((julianday(end_date) - julianday(start_date)) * 24), 1) as hours
 FROM sleep
 WHERE value LIKE '%Asleep%'
@@ -349,6 +353,8 @@ GROUP BY night
 ORDER BY night DESC
 LIMIT 14;
 ```
+
+The `-6 hours` shift ensures that pre-midnight sleep sessions (e.g. starting at 23:00) are grouped with the same night as post-midnight sessions.
 
 ### Workout summary by type
 

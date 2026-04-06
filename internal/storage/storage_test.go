@@ -931,3 +931,108 @@ func TestQueryRows_AllValidTablesAccessible(t *testing.T) {
 		}
 	}
 }
+
+// --- QuerySleepDailyTotal ---
+
+func insertSleepRows(t *testing.T, db *DB, rows [][]any) {
+	t.Helper()
+	cols := []string{"source_name", "start_date", "end_date", "value"}
+	_, err := db.BatchInsertRecords("sleep", cols, rows)
+	if err != nil {
+		t.Fatalf("inserting sleep rows: %v", err)
+	}
+}
+
+func TestQuerySleepDailyTotal_BasicDuration(t *testing.T) {
+	db := tempDB(t)
+	insertSleepRows(t, db, [][]any{
+		// 8 hours of core sleep, no timezone offset (already normalized)
+		{"Watch", "2024-01-01 23:00:00", "2024-01-02 07:00:00", "HKCategoryValueSleepAnalysisAsleepCore"},
+	})
+
+	results, err := db.QuerySleepDailyTotal(QueryParams{Table: "sleep", Limit: 50})
+	if err != nil {
+		t.Fatalf("query error: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0]["hours"] != "8.0" {
+		t.Errorf("expected 8.0 hours, got %v", results[0]["hours"])
+	}
+}
+
+func TestQuerySleepDailyTotal_PostMidnightGrouping(t *testing.T) {
+	db := tempDB(t)
+	insertSleepRows(t, db, [][]any{
+		// Session starting before midnight should be grouped with the same night
+		// as a session starting after midnight
+		{"Watch", "2024-03-29 23:00:00", "2024-03-30 01:00:00", "HKCategoryValueSleepAnalysisAsleepCore"},
+		{"Watch", "2024-03-30 01:30:00", "2024-03-30 07:00:00", "HKCategoryValueSleepAnalysisAsleepDeep"},
+	})
+
+	results, err := db.QuerySleepDailyTotal(QueryParams{Table: "sleep", Limit: 50})
+	if err != nil {
+		t.Fatalf("query error: %v", err)
+	}
+	// Both sessions should be grouped under the same night (2024-03-29)
+	if len(results) != 1 {
+		t.Fatalf("expected 1 night, got %d: %v", len(results), results)
+	}
+	if results[0]["night"] != "2024-03-29" {
+		t.Errorf("expected night '2024-03-29', got %v", results[0]["night"])
+	}
+	// Total: 2h + 5.5h = 7.5h
+	if results[0]["hours"] != "7.5" {
+		t.Errorf("expected 7.5 hours, got %v", results[0]["hours"])
+	}
+}
+
+func TestQuerySleepDailyTotal_ExcludesInBedAndAwake(t *testing.T) {
+	db := tempDB(t)
+	insertSleepRows(t, db, [][]any{
+		{"Watch", "2024-01-01 22:00:00", "2024-01-02 06:00:00", "HKCategoryValueSleepAnalysisAsleepCore"},
+		{"Watch", "2024-01-01 21:30:00", "2024-01-01 22:00:00", "HKCategoryValueSleepAnalysisInBed"},
+		{"Watch", "2024-01-02 03:00:00", "2024-01-02 03:15:00", "HKCategoryValueSleepAnalysisAwake"},
+	})
+
+	results, err := db.QuerySleepDailyTotal(QueryParams{Table: "sleep", Limit: 50})
+	if err != nil {
+		t.Fatalf("query error: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	// Only the AsleepCore session should count (8 hours)
+	if results[0]["hours"] != "8.0" {
+		t.Errorf("expected 8.0 hours (InBed/Awake excluded), got %v", results[0]["hours"])
+	}
+}
+
+func TestQuerySleepDailyTotal_EmptyResult(t *testing.T) {
+	db := tempDB(t)
+
+	results, err := db.QuerySleepDailyTotal(QueryParams{Table: "sleep", Limit: 50})
+	if err != nil {
+		t.Fatalf("query error: %v", err)
+	}
+	if len(results) != 0 {
+		t.Errorf("expected 0 results, got %d", len(results))
+	}
+}
+
+func TestQuerySleepDailyTotal_MultipleNights(t *testing.T) {
+	db := tempDB(t)
+	insertSleepRows(t, db, [][]any{
+		{"Watch", "2024-01-01 23:00:00", "2024-01-02 07:00:00", "HKCategoryValueSleepAnalysisAsleepCore"},
+		{"Watch", "2024-01-02 23:30:00", "2024-01-03 06:30:00", "HKCategoryValueSleepAnalysisAsleepREM"},
+	})
+
+	results, err := db.QuerySleepDailyTotal(QueryParams{Table: "sleep", Limit: 50})
+	if err != nil {
+		t.Fatalf("query error: %v", err)
+	}
+	if len(results) != 2 {
+		t.Fatalf("expected 2 nights, got %d", len(results))
+	}
+}

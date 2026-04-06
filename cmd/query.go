@@ -38,7 +38,7 @@ func init() {
 	queryCmd.Flags().StringVar(&queryTo, "to", "", "filter records to this date (inclusive, e.g. 2024-12-31)")
 	queryCmd.Flags().IntVar(&queryLimit, "limit", 50, "maximum number of records to return")
 	queryCmd.Flags().StringVar(&queryFormat, "format", "table", "output format: table, json, csv")
-	queryCmd.Flags().BoolVar(&queryTotal, "total", false, "show deduplicated daily totals (steps, active-energy, basal-energy)")
+	queryCmd.Flags().BoolVar(&queryTotal, "total", false, "show deduplicated daily totals (steps, active-energy, basal-energy, sleep)")
 	rootCmd.AddCommand(queryCmd)
 }
 
@@ -52,9 +52,10 @@ func runQuery(cmd *cobra.Command, args []string) error {
 	totalSupportedTables := map[string]bool{
 		"steps": true, "active-energy": true, "active_energy": true,
 		"basal-energy": true, "basal_energy": true,
+		"sleep": true,
 	}
 	if queryTotal && !totalSupportedTables[table] {
-		return fmt.Errorf("--total is only supported for: steps, active-energy, basal-energy")
+		return fmt.Errorf("--total is only supported for: steps, active-energy, basal-energy, sleep")
 	}
 
 	db, err := storage.Open(dbPath)
@@ -78,6 +79,8 @@ func runQuery(cmd *cobra.Command, args []string) error {
 		rows, err = db.QueryActiveEnergyDailyTotal(params)
 	case queryTotal && (table == "basal-energy" || table == "basal_energy"):
 		rows, err = db.QueryBasalEnergyDailyTotal(params)
+	case queryTotal && table == "sleep":
+		rows, err = db.QuerySleepDailyTotal(params)
 	default:
 		rows, err = db.QueryRows(params)
 	}
