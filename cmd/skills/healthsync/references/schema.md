@@ -676,7 +676,7 @@ CREATE INDEX idx_sleep_start_date ON sleep(start_date);
 | `HKCategoryValueSleepAnalysisAwake` | Awake |
 | `HKCategoryValueSleepAnalysisAsleepUnspecified` | Unspecified |
 
-Session duration = `end_date - start_date`.
+Session duration = `end_date - start_date`. Supports `--total` for nightly sleep hours.
 
 ### mindful_sessions
 
@@ -743,13 +743,13 @@ Common `activity_type` values: `HKWorkoutActivityTypeRunning`, `HKWorkoutActivit
 
 ## Date format
 
-All dates are stored as text in Apple Health format:
+All dates are stored as text in local time (timezone offset stripped at parse time):
 
 ```
-2024-01-15 08:30:00 +0530
+2024-01-15 08:30:00
 ```
 
-When filtering with SQLite `WHERE`, use `date(start_date)` for day-level grouping or string prefix comparison for ranges.
+Compatible with SQLite's `date()`, `julianday()`, and other date functions. When filtering with SQLite `WHERE`, use `date(start_date)` for day-level grouping or string prefix comparison for ranges.
 
 ---
 
@@ -787,8 +787,11 @@ LIMIT 30;
 
 ### Sleep duration per night (asleep only)
 
+Via CLI: `healthsync query sleep --total --from 2024-01-01`
+
+Or via SQL (note the `-6 hours` shift for correct night grouping):
 ```sql
-SELECT date(start_date) as night,
+SELECT date(start_date, '-6 hours') as night,
        ROUND(SUM((julianday(end_date) - julianday(start_date)) * 24), 1) as hours
 FROM sleep
 WHERE value LIKE '%Asleep%'

@@ -71,7 +71,7 @@ toc: true
 
 | Table | Apple Health Type | Notes |
 |-------|-------------------|-------|
-| `sleep` | `HKCategoryTypeIdentifierSleepAnalysis` | Sleep stages — no unit column |
+| `sleep` | `HKCategoryTypeIdentifierSleepAnalysis` | Sleep stages — no unit column; `--total` supported |
 | `mindful_sessions` | `HKCategoryTypeIdentifierMindfulSession` | Category — no unit column |
 | `stand_hours` | `HKCategoryTypeIdentifierAppleStandHour` | Category — no unit column |
 
