@@ -8,6 +8,15 @@ The primary motivation is to make your Apple Health data accessible to AI coding
 
 ## Install
 
+### Homebrew
+
+```bash
+brew tap BRO3886/tap
+brew install healthsync
+```
+
+Or install via the install script:
+
 ```bash
 curl -fsSL https://healthsync.sidv.dev/install | bash
 ```
