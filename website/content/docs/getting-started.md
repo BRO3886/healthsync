@@ -10,7 +10,14 @@ toc: true
 
 ## Installation
 
-### Quick install (recommended)
+### Homebrew
+
+```bash
+brew tap BRO3886/tap
+brew install healthsync
+```
+
+### Quick install
 
 ```bash
 curl -fsSL https://healthsync.sidv.dev/install | bash
