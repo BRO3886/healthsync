@@ -42,34 +42,40 @@ jobs:
 
       - name: Update formula
         run: |
-          cat > homebrew-tap/Formula/healthsync.rb << 'FORMULA'
+          VERSION="${{ steps.release.outputs.version }}"
+          TAG="${{ github.ref_name }}"
+          DAR_ARM_SHA="${{ steps.checksums.outputs.dar_arm64_sha }}"
+          DAR_AMD_SHA="${{ steps.checksums.outputs.dar_amd64_sha }}"
+          LIN_ARM_SHA="${{ steps.checksums.outputs.lin_arm64_sha }}"
+          LIN_AMD_SHA="${{ steps.checksums.outputs.lin_amd64_sha }}"
+          cat > homebrew-tap/Formula/healthsync.rb <<EOF
           class Healthsync < Formula
             desc "Parse Apple Health exports into a local SQLite database for AI agents and CLI queries"
             homepage "https://github.com/BRO3886/healthsync"
-            version "${{ steps.release.outputs.version }}"
+            version "${VERSION}"
             license "MIT"
 
             on_macos do
               on_arm do
-                url "https://github.com/BRO3886/healthsync/releases/download/${{ github.ref_name }}/healthsync-darwin-arm64.tar.gz"
-                sha256 "${{ steps.checksums.outputs.dar_arm64_sha }}"
+                url "https://github.com/BRO3886/healthsync/releases/download/${TAG}/healthsync-darwin-arm64.tar.gz"
+                sha256 "${DAR_ARM_SHA}"
               end
 
               on_intel do
-                url "https://github.com/BRO3886/healthsync/releases/download/${{ github.ref_name }}/healthsync-darwin-amd64.tar.gz"
-                sha256 "${{ steps.checksums.outputs.dar_amd64_sha }}"
+                url "https://github.com/BRO3886/healthsync/releases/download/${TAG}/healthsync-darwin-amd64.tar.gz"
+                sha256 "${DAR_AMD_SHA}"
               end
             end
 
             on_linux do
               on_arm do
-                url "https://github.com/BRO3886/healthsync/releases/download/${{ github.ref_name }}/healthsync-linux-arm64.tar.gz"
-                sha256 "${{ steps.checksums.outputs.lin_arm64_sha }}"
+                url "https://github.com/BRO3886/healthsync/releases/download/${TAG}/healthsync-linux-arm64.tar.gz"
+                sha256 "${LIN_ARM_SHA}"
               end
 
               on_intel do
-                url "https://github.com/BRO3886/healthsync/releases/download/${{ github.ref_name }}/healthsync-linux-amd64.tar.gz"
-                sha256 "${{ steps.checksums.outputs.lin_amd64_sha }}"
+                url "https://github.com/BRO3886/healthsync/releases/download/${TAG}/healthsync-linux-amd64.tar.gz"
+                sha256 "${LIN_AMD_SHA}"
               end
             end
 
@@ -78,10 +84,10 @@ jobs:
             end
 
             test do
-              assert_match version.to_s, shell_output("#{bin}/healthsync version")
+              assert_match version.to_s, shell_output("\#{bin}/healthsync version")
             end
           end
-          FORMULA
+          EOF
           sed -i 's/^          //' homebrew-tap/Formula/healthsync.rb
 
       - name: Commit and push
