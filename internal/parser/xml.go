@@ -3,6 +3,7 @@ package parser
 import (
 	"archive/zip"
 	"bufio"
+	"bytes"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -50,18 +51,79 @@ func parseZip(path string, db *storage.DB, progress ProgressFunc) (*ParseResult,
 	}
 	defer r.Close()
 
-	for _, f := range r.File {
-		if filepath.Base(f.Name) == "export.xml" {
-			rc, err := f.Open()
-			if err != nil {
-				return nil, fmt.Errorf("opening export.xml in zip: %w", err)
-			}
-			defer rc.Close()
-			return parseXML(rc, db, progress)
+	entry, err := findHealthExport(r.File)
+	if err != nil {
+		return nil, err
+	}
+
+	rc, err := entry.Open()
+	if err != nil {
+		return nil, fmt.Errorf("opening %s in zip: %w", entry.Name, err)
+	}
+	defer rc.Close()
+	return parseXML(rc, db, progress)
+}
+
+// findHealthExport locates the HealthKit export XML inside an Apple Health zip.
+//
+// The filename is not reliable: Apple localizes it per device language
+// ("export.xml" on English, "导出.xml" on Chinese, and so on), users can
+// rename the file, and re-zipped archives may include stray xml files. The
+// zip also always contains a sibling "export_cda.xml" in a completely
+// different schema (CDA / ClinicalDocument) which must never be parsed as
+// HealthKit data.
+//
+// We therefore identify the export by content, not by name: any .xml entry
+// whose head contains "<HealthData" is the HealthKit export. The CDA file
+// starts with "<ClinicalDocument" so it is naturally rejected.
+func findHealthExport(files []*zip.File) (*zip.File, error) {
+	var candidates []*zip.File
+	for _, f := range files {
+		if f.FileInfo().IsDir() {
+			continue
+		}
+		if !strings.HasSuffix(strings.ToLower(f.Name), ".xml") {
+			continue
+		}
+		candidates = append(candidates, f)
+	}
+
+	for _, f := range candidates {
+		ok, err := looksLikeHealthKitXML(f)
+		if err != nil {
+			return nil, fmt.Errorf("reading %s: %w", f.Name, err)
+		}
+		if ok {
+			return f, nil
 		}
 	}
 
-	return nil, fmt.Errorf("export.xml not found in zip archive")
+	if len(candidates) == 0 {
+		return nil, fmt.Errorf("no .xml entries in zip archive")
+	}
+	return nil, fmt.Errorf("no HealthKit export XML found in zip archive (found %d .xml entries but none contained a <HealthData> root — is this an Apple Health export?)", len(candidates))
+}
+
+// looksLikeHealthKitXML reads the head of a zip entry and checks for the
+// HealthKit root element. The match looks for "<HealthData " (with trailing
+// space) rather than bare "<HealthData" so it cannot false-positive on
+// "<HealthDataArchive" or similar; the root element always has at least the
+// "locale" attribute. 32 KiB is well beyond the size of any real Apple
+// Health DOCTYPE preamble (which is a few KiB of entity declarations) but
+// cheap to read.
+func looksLikeHealthKitXML(f *zip.File) (bool, error) {
+	rc, err := f.Open()
+	if err != nil {
+		return false, err
+	}
+	defer rc.Close()
+
+	head := make([]byte, 32*1024)
+	n, err := io.ReadFull(rc, head)
+	if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
+		return false, err
+	}
+	return bytes.Contains(head[:n], []byte("<HealthData ")), nil
 }
 
 // stripDTD pipes the input through a goroutine that removes the DOCTYPE section.

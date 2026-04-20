@@ -434,18 +434,25 @@ func TestParseFile_XMLWithDTD(t *testing.T) {
 
 func makeTestZip(t *testing.T, xmlContent string, xmlPath string) string {
 	t.Helper()
+	return makeTestZipEntries(t, map[string]string{xmlPath: xmlContent})
+}
+
+func makeTestZipEntries(t *testing.T, entries map[string]string) string {
+	t.Helper()
 	zipPath := filepath.Join(t.TempDir(), "export.zip")
 	f, err := os.Create(zipPath)
 	if err != nil {
 		t.Fatalf("creating zip: %v", err)
 	}
 	w := zip.NewWriter(f)
-	zf, err := w.Create(xmlPath)
-	if err != nil {
-		t.Fatalf("creating zip entry: %v", err)
-	}
-	if _, err := io.Copy(zf, bytes.NewReader([]byte(xmlContent))); err != nil {
-		t.Fatalf("writing zip entry: %v", err)
+	for path, content := range entries {
+		zf, err := w.Create(path)
+		if err != nil {
+			t.Fatalf("creating zip entry %q: %v", path, err)
+		}
+		if _, err := io.Copy(zf, bytes.NewReader([]byte(content))); err != nil {
+			t.Fatalf("writing zip entry %q: %v", path, err)
+		}
 	}
 	w.Close()
 	f.Close()
@@ -492,7 +499,99 @@ func TestParseFile_ZipWithoutExportXML(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for zip without export.xml")
 	}
-	if !strings.Contains(err.Error(), "not found") {
+	if !strings.Contains(err.Error(), "no .xml entries") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestParseFile_ZipWithLocalizedExport(t *testing.T) {
+	xml := makeTestXML(`
+  <Record type="HKQuantityTypeIdentifierStepCount" sourceName="iPhone" unit="count" value="500" startDate="2024-01-01 00:00:00 +0000" endDate="2024-01-01 00:01:00 +0000"/>
+`)
+	zipPath := makeTestZipEntries(t, map[string]string{
+		"apple_health_export/导出.xml":       xml,
+		"apple_health_export/export_cda.xml": "<ClinicalDocument></ClinicalDocument>",
+	})
+	db := tempDB(t)
+
+	result, err := ParseFile(zipPath, db, nil)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if result.Total != 1 {
+		t.Errorf("expected 1 record from localized zip, got %d", result.Total)
+	}
+}
+
+// Real Apple Health exports carry a multi-KiB DOCTYPE preamble before the
+// <HealthData root element. Verifies the content-sniff window is large
+// enough to reach past the DOCTYPE.
+func TestParseFile_ZipWithRealisticDOCTYPE(t *testing.T) {
+	var dtd strings.Builder
+	dtd.WriteString("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+	dtd.WriteString("<!DOCTYPE HealthData [\n")
+	// Pad the DOCTYPE to ~10 KiB of declarations similar in shape to what
+	// Apple ships (a real en_IN export puts <HealthData at byte ~7400).
+	// This pushes the root element well past the DOCTYPE name itself and
+	// past any naive 4 KiB sniff window.
+	for i := 0; i < 55; i++ {
+		dtd.WriteString("<!ELEMENT Record EMPTY>\n")
+		dtd.WriteString("<!ATTLIST Record type CDATA #REQUIRED sourceName CDATA #REQUIRED unit CDATA #IMPLIED value CDATA #REQUIRED startDate CDATA #REQUIRED endDate CDATA #REQUIRED>\n")
+	}
+	dtd.WriteString("]>\n")
+	dtd.WriteString(`<HealthData locale="en_US">`)
+	dtd.WriteString(`<Record type="HKQuantityTypeIdentifierStepCount" sourceName="iPhone" unit="count" value="500" startDate="2024-01-01 00:00:00 +0000" endDate="2024-01-01 00:01:00 +0000"/>`)
+	dtd.WriteString(`</HealthData>`)
+
+	zipPath := makeTestZipEntries(t, map[string]string{
+		"apple_health_export/导出.xml":         dtd.String(),
+		"apple_health_export/export_cda.xml": `<?xml version="1.0"?><ClinicalDocument/>`,
+	})
+	db := tempDB(t)
+
+	result, err := ParseFile(zipPath, db, nil)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if result.Total != 1 {
+		t.Errorf("expected 1 record from export with DOCTYPE, got %d", result.Total)
+	}
+}
+
+// Stray xml files (e.g. from re-zipped archives) must not be picked — we
+// identify the export by content, not by filename.
+func TestParseFile_ZipWithStrayXML(t *testing.T) {
+	healthXML := makeTestXML(`
+  <Record type="HKQuantityTypeIdentifierStepCount" sourceName="iPhone" unit="count" value="100" startDate="2024-01-01 00:00:00 +0000" endDate="2024-01-01 00:01:00 +0000"/>
+`)
+	zipPath := makeTestZipEntries(t, map[string]string{
+		"apple_health_export/notes.xml":      `<?xml version="1.0"?><notes><note>hi</note></notes>`,
+		"apple_health_export/导出.xml":         healthXML,
+		"apple_health_export/export_cda.xml": `<?xml version="1.0"?><ClinicalDocument/>`,
+	})
+	db := tempDB(t)
+
+	result, err := ParseFile(zipPath, db, nil)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if result.Total != 1 {
+		t.Errorf("expected 1 record (HealthKit xml picked by content), got %d", result.Total)
+	}
+}
+
+// export_cda.xml must never be picked, even if it is the only .xml present.
+func TestParseFile_ZipIgnoresCDAOnly(t *testing.T) {
+	zipPath := makeTestZipEntries(t, map[string]string{
+		"apple_health_export/export_cda.xml": "<ClinicalDocument></ClinicalDocument>",
+	})
+	db := tempDB(t)
+
+	_, err := ParseFile(zipPath, db, nil)
+	if err == nil {
+		t.Fatal("expected error when only export_cda.xml is present")
+	}
+	if !strings.Contains(err.Error(), "no HealthKit export XML") {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
