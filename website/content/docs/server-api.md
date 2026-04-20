@@ -117,8 +117,8 @@ Query health data as JSON.
   {
     "id": 1,
     "source_name": "Siddhartha's Apple Watch",
-    "start_date": "2026-02-12 19:11:31 +0530",
-    "end_date": "2026-02-12 19:11:31 +0530",
+    "start_date": "2026-02-12 19:11:31",
+    "end_date": "2026-02-12 19:11:31",
     "value": 72,
     "unit": "count/min",
     "created_at": "2026-02-12 14:24:12"

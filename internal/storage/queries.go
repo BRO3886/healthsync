@@ -493,6 +493,61 @@ func (db *DB) queryEnergyDailyTotal(tableName string, params QueryParams) ([]map
 	return results, nil
 }
 
+// QuerySleepDailyTotal returns nightly sleep duration totals grouped by sleep night.
+// It shifts timestamps back 6 hours so that sessions starting in the evening (e.g. 23:00)
+// are attributed to the next calendar day's "sleep night". Only counts Asleep stages
+// (Core, Deep, REM, Unspecified), excluding InBed and Awake.
+func (db *DB) QuerySleepDailyTotal(params QueryParams) ([]map[string]interface{}, error) {
+	query := `SELECT date(start_date, '-6 hours') AS night,
+		ROUND(SUM((julianday(end_date) - julianday(start_date)) * 24), 1) AS hours
+		FROM sleep
+		WHERE value LIKE '%Asleep%'`
+	var args []interface{}
+
+	if params.From != "" {
+		query += " AND start_date >= ?"
+		args = append(args, params.From)
+	}
+	if params.To != "" {
+		query += " AND date(start_date, '-6 hours') <= ?"
+		args = append(args, params.To)
+	}
+
+	query += " GROUP BY night ORDER BY night DESC"
+
+	if params.Limit > 0 {
+		query += " LIMIT ?"
+		args = append(args, params.Limit)
+	}
+
+	rows, err := db.conn.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("querying sleep daily total: %w", err)
+	}
+	defer rows.Close()
+
+	var results []map[string]interface{}
+	for rows.Next() {
+		var night string
+		var hours float64
+		if err := rows.Scan(&night, &hours); err != nil {
+			return nil, fmt.Errorf("scanning sleep total row: %w", err)
+		}
+		results = append(results, map[string]interface{}{
+			"night": night,
+			"hours": strconv.FormatFloat(hours, 'f', 1, 64),
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	if results == nil {
+		results = []map[string]interface{}{}
+	}
+	return results, nil
+}
+
 // QueryActiveEnergyDailyTotal returns deduplicated daily active energy totals aggregated by calendar day.
 func (db *DB) QueryActiveEnergyDailyTotal(params QueryParams) ([]map[string]interface{}, error) {
 	return db.queryEnergyDailyTotal("active_energy", params)

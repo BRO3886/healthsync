@@ -56,7 +56,7 @@ healthsync query <table> [flags]
 | `--to` | Filter records to this date (inclusive) | — |
 | `--limit` | Maximum records to return | `50` |
 | `--format` | Output format: `table`, `json`, `csv` | `table` |
-| `--total` | Deduplicated daily totals (`steps`, `active-energy`, `basal-energy`) | `false` |
+| `--total` | Deduplicated daily totals (`steps`, `active-energy`, `basal-energy`, `sleep`) | `false` |
 | `--db` | Path to SQLite database | `~/.healthsync/healthsync.db` |
 
 **Available tables:**
@@ -95,7 +95,7 @@ healthsync query <table> [flags]
 | `running-vertical-oscillation` | `running_vertical_oscillation` | cm |
 | `spo2` | `spo2` | Blood oxygen (0-1 fraction) |
 | `vo2max` | `vo2_max` | VO2 Max (mL/min·kg) |
-| `sleep` | `sleep` | Sleep stages |
+| `sleep` | `sleep` | Sleep stages — `--total` supported |
 | `workouts` | `workouts` | All workout types |
 | `wrist-temperature` | `wrist_temperature` | °C deviation |
 | `time-in-daylight` | `time_in_daylight` | Minutes |
@@ -125,6 +125,9 @@ healthsync query steps --total --from 2024-01-01
 
 # Deduplicated daily active energy totals
 healthsync query active-energy --total --from 2024-01-01
+
+# Nightly sleep duration totals
+healthsync query sleep --total --from 2024-01-01
 
 # Blood pressure history
 healthsync query blood-pressure --from 2024-01-01 --format json

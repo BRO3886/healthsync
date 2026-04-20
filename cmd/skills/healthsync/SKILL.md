@@ -63,6 +63,9 @@ healthsync query steps --total --from 2024-01-01
 # Deduplicated daily active energy totals
 healthsync query active-energy --total --from 2024-01-01
 
+# Nightly sleep duration totals
+healthsync query sleep --total --from 2024-01-01
+
 # Workouts as JSON
 healthsync query workouts --format json --limit 20
 
@@ -98,7 +101,7 @@ sqlite3 ~/.healthsync/healthsync.db "SELECT strftime('%Y-W%W', start_date) as we
 | `--to` | Filter records to this date (inclusive) | — |
 | `--limit` | Maximum records to return | 50 |
 | `--format` | Output format: `table`, `json`, `csv` | table |
-| `--total` | Deduplicated daily totals (steps, active-energy, basal-energy only) | false |
+| `--total` | Deduplicated daily totals (steps, active-energy, basal-energy, sleep) | false |
 | `--db` | Override database path | `~/.healthsync/healthsync.db` |
 
 ### Available Tables
@@ -267,7 +270,7 @@ CREATE TABLE workouts (
 
 ### Date Format
 
-All dates stored as text: `2024-01-15 08:30:00 +0530`. Filter with date prefix — `2024-01-01` works via SQLite string comparison.
+All dates stored as text in local time: `2024-01-15 08:30:00` (timezone offset stripped at parse time). Compatible with SQLite `date()`, `julianday()`, etc. Filter with date prefix — `2024-01-01` works via string comparison.
 
 ### Sleep Stage Values
 
@@ -290,6 +293,11 @@ healthsync query steps --total --from 2024-01-01
 ### Daily active energy totals (deduped)
 ```bash
 healthsync query active-energy --total --from 2024-01-01
+```
+
+### Nightly sleep duration totals
+```bash
+healthsync query sleep --total --from 2024-01-01
 ```
 
 ### Average resting heart rate per week
@@ -324,8 +332,13 @@ ORDER BY day DESC LIMIT 30;
 ```
 
 ### Sleep duration per night
+```bash
+healthsync query sleep --total --from 2024-01-01
+```
+
+Or via SQL:
 ```sql
-SELECT date(start_date) as night,
+SELECT date(start_date, '-6 hours') as night,
   ROUND(SUM((julianday(end_date) - julianday(start_date)) * 24), 1) as hours
 FROM sleep
 WHERE value LIKE '%Asleep%'

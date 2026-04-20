@@ -931,3 +931,102 @@ func TestParseFile_BloodPressure_UnpairedBothKinds(t *testing.T) {
 		t.Errorf("expected 0 blood_pressure rows, got %d", count)
 	}
 }
+
+// --- normalizeTimestamp ---
+
+func TestNormalizeTimestamp(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"positive offset", "2024-01-01 22:00:00 +0530", "2024-01-01 22:00:00"},
+		{"negative offset", "2024-03-15 08:30:00 -0800", "2024-03-15 08:30:00"},
+		{"UTC offset", "2024-06-01 12:00:00 +0000", "2024-06-01 12:00:00"},
+		{"no offset", "2024-01-01 22:00:00", "2024-01-01 22:00:00"},
+		{"empty string", "", ""},
+		{"short string", "2024-01-01", "2024-01-01"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := normalizeTimestamp(tt.input)
+			if got != tt.want {
+				t.Errorf("normalizeTimestamp(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestParseXML_TimestampsNormalized(t *testing.T) {
+	xmlData := `<HealthData>
+		<Record type="HKCategoryTypeIdentifierSleepAnalysis"
+			sourceName="Watch" value="HKCategoryValueSleepAnalysisAsleepCore"
+			startDate="2024-01-01 23:00:00 +0530" endDate="2024-01-02 07:00:00 +0530"/>
+		<Record type="HKQuantityTypeIdentifierStepCount"
+			sourceName="iPhone" value="500" unit="count"
+			startDate="2024-01-01 08:00:00 -0800" endDate="2024-01-01 08:30:00 -0800"/>
+	</HealthData>`
+
+	db := tempDB(t)
+	_, err := parseXML(strings.NewReader(xmlData), db, nil)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+
+	// Verify sleep timestamps have no offset
+	sleepRows, err := db.QueryRows(storage.QueryParams{Table: "sleep", Limit: 10})
+	if err != nil {
+		t.Fatalf("query sleep: %v", err)
+	}
+	if len(sleepRows) != 1 {
+		t.Fatalf("expected 1 sleep row, got %d", len(sleepRows))
+	}
+	startDate := sleepRows[0]["start_date"].(string)
+	if startDate != "2024-01-01 23:00:00" {
+		t.Errorf("expected '2024-01-01 23:00:00', got %q", startDate)
+	}
+
+	// Verify steps timestamps have no offset
+	stepRows, err := db.QueryRows(storage.QueryParams{Table: "steps", Limit: 10})
+	if err != nil {
+		t.Fatalf("query steps: %v", err)
+	}
+	if len(stepRows) != 1 {
+		t.Fatalf("expected 1 step row, got %d", len(stepRows))
+	}
+	stepStart := stepRows[0]["start_date"].(string)
+	if stepStart != "2024-01-01 08:00:00" {
+		t.Errorf("expected '2024-01-01 08:00:00', got %q", stepStart)
+	}
+}
+
+func TestParseXML_WorkoutTimestampsNormalized(t *testing.T) {
+	xmlData := `<HealthData>
+		<Workout workoutActivityType="HKWorkoutActivityTypeRunning"
+			duration="30" durationUnit="min"
+			totalDistance="5" totalDistanceUnit="km"
+			totalEnergyBurned="300" totalEnergyBurnedUnit="kcal"
+			sourceName="Watch"
+			startDate="2024-01-01 08:00:00 +0530" endDate="2024-01-01 08:30:00 +0530"/>
+	</HealthData>`
+
+	db := tempDB(t)
+	_, err := parseXML(strings.NewReader(xmlData), db, nil)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+
+	rows, err := db.QueryRows(storage.QueryParams{Table: "workouts", Limit: 10})
+	if err != nil {
+		t.Fatalf("query workouts: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 workout row, got %d", len(rows))
+	}
+	if got := rows[0]["start_date"].(string); got != "2024-01-01 08:00:00" {
+		t.Errorf("start_date: expected '2024-01-01 08:00:00', got %q", got)
+	}
+	if got := rows[0]["end_date"].(string); got != "2024-01-01 08:30:00" {
+		t.Errorf("end_date: expected '2024-01-01 08:30:00', got %q", got)
+	}
+}
