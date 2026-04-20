@@ -499,7 +499,7 @@ func TestParseFile_ZipWithoutExportXML(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for zip without export.xml")
 	}
-	if !strings.Contains(err.Error(), "no HealthKit export XML") {
+	if !strings.Contains(err.Error(), "no .xml entries") {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
@@ -523,15 +523,16 @@ func TestParseFile_ZipWithLocalizedExport(t *testing.T) {
 	}
 }
 
-// When both export.xml and a localized variant exist, prefer export.xml.
-func TestParseFile_ZipPrefersExportXML(t *testing.T) {
-	englishXML := makeTestXML(`
+// Stray xml files (e.g. from re-zipped archives) must not be picked — we
+// identify the export by content, not by filename.
+func TestParseFile_ZipWithStrayXML(t *testing.T) {
+	healthXML := makeTestXML(`
   <Record type="HKQuantityTypeIdentifierStepCount" sourceName="iPhone" unit="count" value="100" startDate="2024-01-01 00:00:00 +0000" endDate="2024-01-01 00:01:00 +0000"/>
 `)
-	// This would produce a parse error if ever picked (bogus content).
 	zipPath := makeTestZipEntries(t, map[string]string{
-		"apple_health_export/导出.xml":   "garbage",
-		"apple_health_export/export.xml": englishXML,
+		"apple_health_export/notes.xml":      `<?xml version="1.0"?><notes><note>hi</note></notes>`,
+		"apple_health_export/导出.xml":         healthXML,
+		"apple_health_export/export_cda.xml": `<?xml version="1.0"?><ClinicalDocument/>`,
 	})
 	db := tempDB(t)
 
@@ -540,7 +541,7 @@ func TestParseFile_ZipPrefersExportXML(t *testing.T) {
 		t.Fatalf("parse error: %v", err)
 	}
 	if result.Total != 1 {
-		t.Errorf("expected 1 record (english export preferred), got %d", result.Total)
+		t.Errorf("expected 1 record (HealthKit xml picked by content), got %d", result.Total)
 	}
 }
 
