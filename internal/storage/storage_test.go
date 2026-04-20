@@ -1036,3 +1036,26 @@ func TestQuerySleepDailyTotal_MultipleNights(t *testing.T) {
 		t.Fatalf("expected 2 nights, got %d", len(results))
 	}
 }
+
+// --to filters by night (shifted date), not raw start_date, so a session that
+// starts at 23:00 on the --to day still counts toward that night.
+func TestQuerySleepDailyTotal_ToFilterIncludesPreMidnight(t *testing.T) {
+	db := tempDB(t)
+	insertSleepRows(t, db, [][]any{
+		{"Watch", "2024-01-01 23:00:00", "2024-01-02 07:00:00", "HKCategoryValueSleepAnalysisAsleepCore"},
+		{"Watch", "2024-01-02 23:30:00", "2024-01-03 06:30:00", "HKCategoryValueSleepAnalysisAsleepREM"},
+		{"Watch", "2024-01-03 23:00:00", "2024-01-04 06:00:00", "HKCategoryValueSleepAnalysisAsleepDeep"},
+	})
+
+	results, err := db.QuerySleepDailyTotal(QueryParams{Table: "sleep", To: "2024-01-02", Limit: 50})
+	if err != nil {
+		t.Fatalf("query error: %v", err)
+	}
+	if len(results) != 2 {
+		t.Fatalf("expected 2 nights (Jan 1 + Jan 2), got %d: %+v", len(results), results)
+	}
+	nights := map[string]bool{results[0]["night"].(string): true, results[1]["night"].(string): true}
+	if !nights["2024-01-01"] || !nights["2024-01-02"] {
+		t.Errorf("expected nights 2024-01-01 and 2024-01-02, got %+v", nights)
+	}
+}

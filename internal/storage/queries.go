@@ -509,7 +509,7 @@ func (db *DB) QuerySleepDailyTotal(params QueryParams) ([]map[string]interface{}
 		args = append(args, params.From)
 	}
 	if params.To != "" {
-		query += " AND start_date <= ?"
+		query += " AND date(start_date, '-6 hours') <= ?"
 		args = append(args, params.To)
 	}
 

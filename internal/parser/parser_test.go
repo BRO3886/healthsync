@@ -999,3 +999,34 @@ func TestParseXML_TimestampsNormalized(t *testing.T) {
 		t.Errorf("expected '2024-01-01 08:00:00', got %q", stepStart)
 	}
 }
+
+func TestParseXML_WorkoutTimestampsNormalized(t *testing.T) {
+	xmlData := `<HealthData>
+		<Workout workoutActivityType="HKWorkoutActivityTypeRunning"
+			duration="30" durationUnit="min"
+			totalDistance="5" totalDistanceUnit="km"
+			totalEnergyBurned="300" totalEnergyBurnedUnit="kcal"
+			sourceName="Watch"
+			startDate="2024-01-01 08:00:00 +0530" endDate="2024-01-01 08:30:00 +0530"/>
+	</HealthData>`
+
+	db := tempDB(t)
+	_, err := parseXML(strings.NewReader(xmlData), db, nil)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+
+	rows, err := db.QueryRows(storage.QueryParams{Table: "workouts", Limit: 10})
+	if err != nil {
+		t.Fatalf("query workouts: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 workout row, got %d", len(rows))
+	}
+	if got := rows[0]["start_date"].(string); got != "2024-01-01 08:00:00" {
+		t.Errorf("start_date: expected '2024-01-01 08:00:00', got %q", got)
+	}
+	if got := rows[0]["end_date"].(string); got != "2024-01-01 08:30:00" {
+		t.Errorf("end_date: expected '2024-01-01 08:30:00', got %q", got)
+	}
+}
