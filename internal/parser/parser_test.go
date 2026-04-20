@@ -523,6 +523,41 @@ func TestParseFile_ZipWithLocalizedExport(t *testing.T) {
 	}
 }
 
+// Real Apple Health exports carry a multi-KiB DOCTYPE preamble before the
+// <HealthData root element. Verifies the content-sniff window is large
+// enough to reach past the DOCTYPE.
+func TestParseFile_ZipWithRealisticDOCTYPE(t *testing.T) {
+	var dtd strings.Builder
+	dtd.WriteString("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+	dtd.WriteString("<!DOCTYPE HealthData [\n")
+	// Pad the DOCTYPE to ~10 KiB of declarations similar in shape to what
+	// Apple ships (a real en_IN export puts <HealthData at byte ~7400).
+	// This pushes the root element well past the DOCTYPE name itself and
+	// past any naive 4 KiB sniff window.
+	for i := 0; i < 55; i++ {
+		dtd.WriteString("<!ELEMENT Record EMPTY>\n")
+		dtd.WriteString("<!ATTLIST Record type CDATA #REQUIRED sourceName CDATA #REQUIRED unit CDATA #IMPLIED value CDATA #REQUIRED startDate CDATA #REQUIRED endDate CDATA #REQUIRED>\n")
+	}
+	dtd.WriteString("]>\n")
+	dtd.WriteString(`<HealthData locale="en_US">`)
+	dtd.WriteString(`<Record type="HKQuantityTypeIdentifierStepCount" sourceName="iPhone" unit="count" value="500" startDate="2024-01-01 00:00:00 +0000" endDate="2024-01-01 00:01:00 +0000"/>`)
+	dtd.WriteString(`</HealthData>`)
+
+	zipPath := makeTestZipEntries(t, map[string]string{
+		"apple_health_export/导出.xml":         dtd.String(),
+		"apple_health_export/export_cda.xml": `<?xml version="1.0"?><ClinicalDocument/>`,
+	})
+	db := tempDB(t)
+
+	result, err := ParseFile(zipPath, db, nil)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if result.Total != 1 {
+		t.Errorf("expected 1 record from export with DOCTYPE, got %d", result.Total)
+	}
+}
+
 // Stray xml files (e.g. from re-zipped archives) must not be picked — we
 // identify the export by content, not by filename.
 func TestParseFile_ZipWithStrayXML(t *testing.T) {

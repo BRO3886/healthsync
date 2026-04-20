@@ -105,9 +105,12 @@ func findHealthExport(files []*zip.File) (*zip.File, error) {
 }
 
 // looksLikeHealthKitXML reads the head of a zip entry and checks for the
-// HealthKit root element. 4 KiB is enough to skip the XML prolog, optional
-// DOCTYPE, and whitespace before <HealthData> even on exports with long
-// DTDs.
+// HealthKit root element. The match looks for "<HealthData " (with trailing
+// space) rather than bare "<HealthData" so it cannot false-positive on
+// "<HealthDataArchive" or similar; the root element always has at least the
+// "locale" attribute. 32 KiB is well beyond the size of any real Apple
+// Health DOCTYPE preamble (which is a few KiB of entity declarations) but
+// cheap to read.
 func looksLikeHealthKitXML(f *zip.File) (bool, error) {
 	rc, err := f.Open()
 	if err != nil {
@@ -115,12 +118,12 @@ func looksLikeHealthKitXML(f *zip.File) (bool, error) {
 	}
 	defer rc.Close()
 
-	head := make([]byte, 4096)
+	head := make([]byte, 32*1024)
 	n, err := io.ReadFull(rc, head)
 	if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
 		return false, err
 	}
-	return bytes.Contains(head[:n], []byte("<HealthData")), nil
+	return bytes.Contains(head[:n], []byte("<HealthData ")), nil
 }
 
 // stripDTD pipes the input through a goroutine that removes the DOCTYPE section.
