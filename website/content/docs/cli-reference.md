@@ -35,7 +35,7 @@ healthsync parse export.zip -v --db ./test.db
 ```
 
 **Behavior:**
-- Accepts `.zip` (auto-extracts `export.xml`) or raw `.xml`
+- Accepts `.zip` or raw `.xml`. Inside a zip, the HealthKit XML is identified by content (looking for `<HealthData`), so exports from any locale work — including non-English exports where the file is named e.g. `导出.xml`
 - Streams XML with constant memory (~10MB for 950MB files)
 - Uses `INSERT OR IGNORE` for deduplication — safe to re-run
 - Inserts in batches of 1000 rows per transaction

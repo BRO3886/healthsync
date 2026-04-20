@@ -43,6 +43,8 @@ go test ./... -coverprofile=coverage.out && go tool cover -func=coverage.out
 - Category types (sleep, mindful_sessions, stand_hours) are `HKCategoryType` (no unit attribute) — `RecordColumns()` returns 4 columns, not 5; value stored as TEXT
 - Parser uses per-table `map[string][][]any` batch buffers — each table flushes at 1000 rows; all flush at EOF
 - Blood pressure staging: systolic + diastolic keyed by `{sourceName, startDate}`; row emitted only when both are staged; unpaired records silently dropped
+- Zip parsing is filename-agnostic: `findHealthExport` sniffs the first 32 KiB of each `.xml` entry for `<HealthData ` (trailing space guards against `<HealthDataArchive`). Handles localized filenames (e.g. `导出.xml` on Chinese-locale devices) without hardcoded locale lists. CDA sibling (`export_cda.xml`) is rejected naturally because its root is `<ClinicalDocument>`.
+- Timestamps are normalized at parse time: `normalizeTimestamp` strips the trailing ` ±HHMM` offset so stored values are plain `YYYY-MM-DD HH:MM:SS` local time. Applied to all date fields (Record start/end, Workout start/end, blood pressure staging key). SQLite date funcs (`julianday`, `date`) cannot parse the space-separated offset format, so this is required for `--total` aggregations to work.
 
 ### SQLite
 - WAL mode enabled for concurrent reads during server mode
@@ -54,7 +56,8 @@ go test ./... -coverprofile=coverage.out && go tool cover -func=coverage.out
 ### Query
 - `TableNameMap` maps both hyphen and underscore CLI names to DB table names (60+ entries)
 - `--format table|json|csv` — CSV/JSON use `sortedKeys()` for deterministic column order
-- `--total` routes to dedicated daily-total methods (NOT `QueryRows`) with overlap dedup
+- `--total` routes to dedicated daily-total methods (NOT `QueryRows`) with overlap dedup. Supported: `steps`, `active-energy`, `basal-energy`, `sleep`
+- `sleep --total` uses `date(start_date, '-6 hours')` to group by sleep night (pre-midnight sessions attributed to the correct night); filters `value LIKE '%Asleep%'` to exclude InBed and Awake; `--to` filter also gates on the shifted night date, not raw `start_date`
 - Source-priority deduplication: Watch=2 > iPhone=1 > other=0 (uses `strings.Contains` on sourceName)
 
 ### Server
@@ -86,6 +89,8 @@ go test ./... -coverprofile=coverage.out && go tool cover -func=coverage.out
 - Tests use `testing/fstest.MapFS` as fake embedded FS (no real files needed)
 
 ## Latest Release
+- v0.5.1 (unreleased, on main) — strip tz offsets from stored timestamps, `sleep --total` with 6h night shift, localized zip support (Chinese etc. via content sniffing)
+- v0.5.0 — `db info` subcommand, background update checker, OpenClaw skills target
 - v0.4.0 — 40+ Apple Health metrics, multi-format query output (table/json/csv), --total flag
 - v0.3.0 — skills install/uninstall/status command; 6 platform archives
 

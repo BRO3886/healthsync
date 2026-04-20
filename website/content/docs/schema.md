@@ -313,7 +313,7 @@ All dates are stored as text in local time (timezone offset stripped during pars
 
 This format is compatible with SQLite's `date()`, `julianday()`, and other date functions. When filtering with `--from` / `--to`, use date prefixes — SQLite does string comparison, so `2024-01-01` matches all timestamps on that day.
 
-> **Note:** If you have an existing database from a pre-v0.5.0 parse, re-run `healthsync parse` on your export to get normalized timestamps. Old-format timestamps with timezone offsets (e.g. `+0530`) cause `julianday()` to return NULL.
+> **Note:** Databases parsed before v0.5.1 store timestamps with the timezone offset appended (e.g. `2024-01-15 08:30:00 +0530`), which causes `julianday()` and `date()` to return NULL. Re-run `healthsync parse` on your export to get normalized timestamps.
 
 ## Useful queries
 

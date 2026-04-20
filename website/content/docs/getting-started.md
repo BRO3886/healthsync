@@ -72,7 +72,7 @@ healthsync parse export.zip
 ```
 
 This will:
-- Extract `export.xml` from the zip
+- Find the HealthKit XML inside the zip by content, so exports from non-English devices (e.g. `导出.xml` on Chinese) work without renaming
 - Stream-parse ~500k+ records in constant memory
 - Store data in `~/.healthsync/healthsync.db`
 - Deduplicate on re-import (safe to run weekly)

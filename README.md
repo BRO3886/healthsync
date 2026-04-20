@@ -48,7 +48,7 @@ healthsync parse export.zip
 healthsync parse export.zip -v  # verbose logging
 ```
 
-Accepts `.zip` (auto-extracts `export.xml`) or raw `.xml` files.
+Accepts `.zip` or raw `.xml` files. Inside a zip, the HealthKit XML is identified by content, so exports from non-English devices (e.g. `导出.xml` on Chinese) work without renaming.
 
 ### Query data
 
@@ -64,11 +64,12 @@ healthsync query body-mass --limit 30
 
 Output formats: `table` (default), `json`, `csv`
 
-Use `--total` with `steps`, `active-energy`, or `basal-energy` for deduplicated daily totals:
+Use `--total` with `steps`, `active-energy`, `basal-energy`, or `sleep` for deduplicated daily (or nightly) totals:
 
 ```bash
 healthsync query steps --total --from 2024-01-01
 healthsync query active-energy --total --from 2024-01-01
+healthsync query sleep --total --from 2024-01-01   # nightly sleep duration, hours
 ```
 
 ### AI agent skills
