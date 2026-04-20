@@ -434,18 +434,25 @@ func TestParseFile_XMLWithDTD(t *testing.T) {
 
 func makeTestZip(t *testing.T, xmlContent string, xmlPath string) string {
 	t.Helper()
+	return makeTestZipEntries(t, map[string]string{xmlPath: xmlContent})
+}
+
+func makeTestZipEntries(t *testing.T, entries map[string]string) string {
+	t.Helper()
 	zipPath := filepath.Join(t.TempDir(), "export.zip")
 	f, err := os.Create(zipPath)
 	if err != nil {
 		t.Fatalf("creating zip: %v", err)
 	}
 	w := zip.NewWriter(f)
-	zf, err := w.Create(xmlPath)
-	if err != nil {
-		t.Fatalf("creating zip entry: %v", err)
-	}
-	if _, err := io.Copy(zf, bytes.NewReader([]byte(xmlContent))); err != nil {
-		t.Fatalf("writing zip entry: %v", err)
+	for path, content := range entries {
+		zf, err := w.Create(path)
+		if err != nil {
+			t.Fatalf("creating zip entry %q: %v", path, err)
+		}
+		if _, err := io.Copy(zf, bytes.NewReader([]byte(content))); err != nil {
+			t.Fatalf("writing zip entry %q: %v", path, err)
+		}
 	}
 	w.Close()
 	f.Close()
@@ -492,7 +499,63 @@ func TestParseFile_ZipWithoutExportXML(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for zip without export.xml")
 	}
-	if !strings.Contains(err.Error(), "not found") {
+	if !strings.Contains(err.Error(), "no HealthKit export XML") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestParseFile_ZipWithLocalizedExport(t *testing.T) {
+	xml := makeTestXML(`
+  <Record type="HKQuantityTypeIdentifierStepCount" sourceName="iPhone" unit="count" value="500" startDate="2024-01-01 00:00:00 +0000" endDate="2024-01-01 00:01:00 +0000"/>
+`)
+	zipPath := makeTestZipEntries(t, map[string]string{
+		"apple_health_export/导出.xml":       xml,
+		"apple_health_export/export_cda.xml": "<ClinicalDocument></ClinicalDocument>",
+	})
+	db := tempDB(t)
+
+	result, err := ParseFile(zipPath, db, nil)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if result.Total != 1 {
+		t.Errorf("expected 1 record from localized zip, got %d", result.Total)
+	}
+}
+
+// When both export.xml and a localized variant exist, prefer export.xml.
+func TestParseFile_ZipPrefersExportXML(t *testing.T) {
+	englishXML := makeTestXML(`
+  <Record type="HKQuantityTypeIdentifierStepCount" sourceName="iPhone" unit="count" value="100" startDate="2024-01-01 00:00:00 +0000" endDate="2024-01-01 00:01:00 +0000"/>
+`)
+	// This would produce a parse error if ever picked (bogus content).
+	zipPath := makeTestZipEntries(t, map[string]string{
+		"apple_health_export/导出.xml":   "garbage",
+		"apple_health_export/export.xml": englishXML,
+	})
+	db := tempDB(t)
+
+	result, err := ParseFile(zipPath, db, nil)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if result.Total != 1 {
+		t.Errorf("expected 1 record (english export preferred), got %d", result.Total)
+	}
+}
+
+// export_cda.xml must never be picked, even if it is the only .xml present.
+func TestParseFile_ZipIgnoresCDAOnly(t *testing.T) {
+	zipPath := makeTestZipEntries(t, map[string]string{
+		"apple_health_export/export_cda.xml": "<ClinicalDocument></ClinicalDocument>",
+	})
+	db := tempDB(t)
+
+	_, err := ParseFile(zipPath, db, nil)
+	if err == nil {
+		t.Fatal("expected error when only export_cda.xml is present")
+	}
+	if !strings.Contains(err.Error(), "no HealthKit export XML") {
 		t.Errorf("unexpected error: %v", err)
 	}
 }

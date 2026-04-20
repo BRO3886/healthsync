@@ -50,18 +50,40 @@ func parseZip(path string, db *storage.DB, progress ProgressFunc) (*ParseResult,
 	}
 	defer r.Close()
 
-	for _, f := range r.File {
-		if filepath.Base(f.Name) == "export.xml" {
-			rc, err := f.Open()
-			if err != nil {
-				return nil, fmt.Errorf("opening export.xml in zip: %w", err)
-			}
-			defer rc.Close()
-			return parseXML(rc, db, progress)
-		}
+	entry := findHealthExport(r.File)
+	if entry == nil {
+		return nil, fmt.Errorf("no HealthKit export XML found in zip archive (expected an .xml file like export.xml or its localized equivalent)")
 	}
 
-	return nil, fmt.Errorf("export.xml not found in zip archive")
+	rc, err := entry.Open()
+	if err != nil {
+		return nil, fmt.Errorf("opening %s in zip: %w", entry.Name, err)
+	}
+	defer rc.Close()
+	return parseXML(rc, db, progress)
+}
+
+// findHealthExport locates the HealthKit export XML inside an Apple Health zip.
+// Apple names the file "export.xml" in English but localizes it on non-English
+// devices (e.g. "导出.xml" on Chinese). The zip always also contains
+// "export_cda.xml" which is a different (CDA) format we do NOT want to parse.
+// Strategy: prefer an exact "export.xml" match; otherwise return the first
+// .xml entry that isn't export_cda.xml.
+func findHealthExport(files []*zip.File) *zip.File {
+	var fallback *zip.File
+	for _, f := range files {
+		base := filepath.Base(f.Name)
+		if base == "export.xml" {
+			return f
+		}
+		if base == "export_cda.xml" {
+			continue
+		}
+		if strings.HasSuffix(strings.ToLower(base), ".xml") && fallback == nil {
+			fallback = f
+		}
+	}
+	return fallback
 }
 
 // stripDTD pipes the input through a goroutine that removes the DOCTYPE section.
