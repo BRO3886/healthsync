@@ -27,3 +27,7 @@ coverage.html
 
 # Marketing
 marketing/
+
+# Work journals (symlinked to ~/projects/work-journals/healthsync, backed up there)
+journals
+
