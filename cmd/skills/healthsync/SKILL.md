@@ -181,6 +181,8 @@ sqlite3 ~/.healthsync/healthsync.db "SELECT strftime('%Y-W%W', start_date) as we
 
 Parse an Apple Health export into the database. (Informational — do not run unless the user asks.)
 
+Accepts `.zip` or `.xml`. Zip parsing identifies the HealthKit XML by content, not filename, so exports from any device locale work (e.g. `导出.xml` on Chinese).
+
 | Flag | Description | Default |
 |------|-------------|---------|
 | `-v` | Verbose logging with progress rate | false |
@@ -384,7 +386,7 @@ GROUP BY week ORDER BY week DESC LIMIT 12;
 
 - **Read-only** — This skill must never write to the database
 - **No real-time data** — Data is only as fresh as the last `healthsync parse` run
-- **Date filtering is string-based** — Timezone offsets are part of the stored date string
+- **Date filtering is string-based** — dates are stored as `YYYY-MM-DD HH:MM:SS` with no timezone offset; SQLite date functions (`date()`, `julianday()`, etc.) work directly on them
 - **SpO2 values are fractions** — 0.98 means 98%, not 98
 - **Blood pressure is paired** — systolic and diastolic are stored together in one row per measurement
 - **Category tables have no unit column** — `sleep`, `mindful_sessions`, `stand_hours` store text values, not numeric
