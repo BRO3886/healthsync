@@ -104,6 +104,16 @@ Steps in order — do not skip or reorder:
 
 - **CRITICAL: Push before tag.** Tagging an unpushed commit then running `gh release create` pushes the tag + that commit but leaves `main` behind on remote — release binary is built from code not reachable from main.
 
+## IndexNow
+
+`make indexnow` submits the live sitemap URLs to IndexNow (Bing, Yandex, Naver, Seznam, Yep). Run it after any deploy that changes page content — not needed for binary-only releases.
+
+The key lives in two places that must stay in sync:
+- `website/static/09d76431580e356eafd8d91aeecc0906.txt` — the key file served at `https://healthsync.sidv.dev/<key>.txt` (filename stem == file contents)
+- `KEY` variable in `scripts/indexnow.sh`
+
+Live submission only works once the key file is deployed to Cloudflare Pages. Running the script before the key file is live will return HTTP 403 from the IndexNow endpoint — expected, not a bug.
+
 ## Conventions
 - Conventional commits
 - No mocks — tests use real temp SQLite databases

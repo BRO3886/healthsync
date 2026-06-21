@@ -1,4 +1,4 @@
-.PHONY: build install test coverage clean tidy lint website website-dev release
+.PHONY: build install test coverage clean tidy lint website website-dev indexnow release
 
 BINARY  := healthsync
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
@@ -56,6 +56,9 @@ website: ## Build the Hugo website
 
 website-dev: ## Start Hugo dev server
 	cd website && hugo server -D
+
+indexnow: ## Submit live sitemap URLs to IndexNow (run after deploying content changes)
+	sh scripts/indexnow.sh
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
