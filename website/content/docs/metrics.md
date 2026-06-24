@@ -1,6 +1,6 @@
 ---
 title: "Supported Metrics"
-description: "What Apple Health data healthsync parses, and what's available for future support."
+description: "The Apple Health metrics healthsync parses into SQLite, from heart rate, sleep, and workouts to energy and body metrics, plus what's planned for future support."
 date: 2026-02-12T00:00:00+05:30
 lastmod: 2026-02-28T00:00:00+05:30
 draft: false

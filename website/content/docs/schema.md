@@ -1,6 +1,6 @@
 ---
 title: "Database Schema"
-description: "SQLite table definitions and query examples."
+description: "The healthsync SQLite schema: table definitions for every parsed Apple Health metric, where the database lives, and example queries you can run with sqlite3."
 date: 2026-02-12T00:00:00+05:30
 lastmod: 2026-02-28T00:00:00+05:30
 draft: false

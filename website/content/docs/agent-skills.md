@@ -1,6 +1,6 @@
 ---
 title: "Agent Skills"
-description: "Let your AI coding agent query your Apple Health data directly."
+description: "Install the healthsync agent skill so your AI coding agent can answer health questions directly, running CLI and SQL queries against your local database."
 date: 2026-02-25T00:00:00+05:30
 lastmod: 2026-02-28T00:00:00+05:30
 draft: false
