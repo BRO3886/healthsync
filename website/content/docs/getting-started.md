@@ -1,6 +1,6 @@
 ---
 title: "Getting Started"
-description: "Install healthsync and parse your first Apple Health export."
+description: "Install healthsync via Homebrew or Go, then parse your first Apple Health export into a local SQLite database and run your first queries from the command line."
 date: 2026-02-12T00:00:00+05:30
 lastmod: 2026-02-28T00:00:00+05:30
 draft: false

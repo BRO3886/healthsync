@@ -1,6 +1,6 @@
 ---
 title: "Server API"
-description: "HTTP API reference for the healthsync server."
+description: "HTTP API reference for the healthsync server: start it on any port, upload an Apple Health export, and query your parsed health metrics through JSON endpoints."
 date: 2026-02-12T00:00:00+05:30
 lastmod: 2026-02-28T00:00:00+05:30
 draft: false
