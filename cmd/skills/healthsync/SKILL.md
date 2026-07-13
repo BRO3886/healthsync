@@ -3,7 +3,7 @@ name: healthsync
 description: Queries Apple Health data stored in a local SQLite database. Use this skill to read heart rate, steps, SpO2, VO2 Max, sleep, workouts, resting heart rate, HRV, blood pressure, active/basal energy, body metrics, mobility, running metrics, mindful sessions, wrist temperature, and more. Can query via the healthsync CLI or directly via SQLite. Read-only — never write to the database.
 metadata:
   author: sidv
-  version: "1.1"
+  version: "1.2"
 compatibility: Requires healthsync binary. Database at ~/.healthsync/healthsync.db must be populated via `healthsync parse`.
 ---
 
@@ -43,6 +43,20 @@ Query Apple Health export data stored in a local SQLite database. This skill is 
 - **READ ONLY** — You must NEVER write to the database. No INSERT, UPDATE, DELETE, DROP, ALTER, or any write operations.
 - **Two query methods**: CLI (`healthsync query`) or direct SQLite (`sqlite3 ~/.healthsync/healthsync.db`)
 - **Prefer CLI** for simple queries. Use direct SQLite for complex aggregations, joins, or custom SQL.
+
+## Gotchas
+
+Read these before you report any number to a user. Each one has produced a confidently wrong answer.
+
+- **Steps and energy MUST use `--total`.** The raw table holds one row per source, so iPhone and Watch both record the same walk. A plain `SUM(value)` roughly doubles the real figure. `--total` deduplicates by source priority (Watch > iPhone > other).
+
+- **Never group sleep by night in your own SQL.** There is no correct hour to split on. Any `GROUP BY date(start_date, ...)` puts the night boundary at some fixed hour, and that hour lands in the middle of somebody's sleep — a user still asleep at 6 AM gets one night cut in half and filed under two dates. This is not hypothetical: it shipped as issue #17 and it fabricated hours for nights the watch was never worn while undercounting the real ones. Use `healthsync query sleep --total`, which clusters segments into whole sessions before assigning a date. If you must touch the raw table, select the segments and reason about sessions yourself; do not aggregate by date.
+
+- **A missing night means the watch was not worn. It does not mean zero sleep.** `sleep --total` omits nights with no data rather than emitting a zero row. If you average, average over the nights actually present and **state the denominator** ("5.9h across the 4 nights recorded"). An average that silently skips gaps, or one that treats a gap as a zero, is how a data gap becomes a false conclusion about a person's health.
+
+- **Naps are separate from night sleep.** `sleep --total` reports them in their own `naps` column and never folds them into `hours`. Do not add the two together and call it "sleep" — a 6.5h night plus a 1.7h nap is not an 8.2h night, and the question being asked is almost always about the nights.
+
+- **Sanity-check any health number against the person before reporting it.** If the data says someone slept 4 hours a night for a week straight, the far more likely explanation is a tool bug or a data gap than a person who did that and functioned. Reconcile the number with the raw rows before you build a conclusion on it.
 
 ## Database Location
 
@@ -301,6 +315,16 @@ healthsync query active-energy --total --from 2024-01-01
 ```bash
 healthsync query sleep --total --from 2024-01-01
 ```
+
+Returns one row per night that has data. See **Gotchas** for how to read it without drawing a false conclusion.
+
+| Column | Meaning |
+|--------|---------|
+| `night` | The date the night began. A session starting at 02:00 on the 5th belongs to the night of the 4th. |
+| `hours` | Night sleep only, Asleep stages only (InBed and Awake excluded, so this is time asleep, not time in bed). Empty if no night sleep was recorded. |
+| `naps`  | Daytime sleep, attributed to the night before it. Never included in `hours`. |
+| `onset` | When sleep began. This is what exposes a chronically late bedtime. |
+| `wake`  | When it ended. |
 
 ### Average resting heart rate per week
 ```sql
