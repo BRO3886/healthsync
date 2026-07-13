@@ -503,12 +503,18 @@ const (
 	// and a daytime nap runs to hours.
 	sleepSessionGap = 2 * time.Hour
 
-	// napOnsetStart and napOnsetEnd bound the hours in which an onset is treated as
-	// a nap rather than the start of a night. Onset time, not duration, decides this:
-	// a 2-hour night before an early flight is still a night, and a 3-hour Sunday
-	// afternoon collapse is still a nap.
+	// napOnsetStart and napOnsetEnd bound the hours in which a session may be a nap.
+	// Onset alone cannot decide it: a bedtime of 19:15 sits inside this window and is
+	// plainly a night, not a nap. Duration alone cannot decide it either: a two-hour
+	// night before an early flight is still a night. A nap is the conjunction of both,
+	// so a session qualifies only if it begins during the day AND stays short.
 	napOnsetStart = 11
 	napOnsetEnd   = 20
+
+	// napMaxDuration is the longest a daytime session can run and still be a nap.
+	// Beyond this it is treated as a night wherever it began, because calling a
+	// six-hour block a nap loses more than mislabelling a long afternoon collapse.
+	napMaxDuration = 4 * time.Hour
 
 	// nightShift maps an onset to the night it belongs to. Any onset from noon
 	// onwards keeps its own date; any onset before noon rolls back to the previous
@@ -524,11 +530,14 @@ type sleepSession struct {
 	asleep time.Duration
 }
 
-// isNap reports whether the session began during the hours in which a person is
-// awake, which makes it a nap rather than a night.
+// isNap reports whether the session both began during the hours in which a person is
+// normally awake and stayed short enough to be a nap. Both conditions are required:
+// an early bedtime falls inside the onset window but is a night, and a short sleep at
+// 04:00 falls outside it but is also a night.
 func (s sleepSession) isNap() bool {
 	h := s.start.Hour()
-	return h >= napOnsetStart && h < napOnsetEnd
+	inDaytime := h >= napOnsetStart && h < napOnsetEnd
+	return inDaytime && s.asleep < napMaxDuration
 }
 
 // night returns the date of the night this session belongs to. A nap is attributed
@@ -690,12 +699,16 @@ func (db *DB) QuerySleepDailyTotal(params QueryParams) ([]map[string]interface{}
 		t := totals[night]
 		row := map[string]interface{}{
 			"night": night,
-			"hours": strconv.FormatFloat(t.hours, 'f', 1, 64),
 			"naps":  strconv.FormatFloat(t.naps, 'f', 1, 64),
+			// A night that holds only a nap has no recorded night sleep. Reporting
+			// 0.0 there would claim the user slept nothing, which is the same
+			// fabrication as inventing hours for an unworn watch.
+			"hours": "",
 			"onset": "",
 			"wake":  "",
 		}
 		if !t.onset.IsZero() {
+			row["hours"] = strconv.FormatFloat(t.hours, 'f', 1, 64)
 			row["onset"] = t.onset.Format("15:04")
 			row["wake"] = t.wake.Format("15:04")
 		}

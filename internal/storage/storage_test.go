@@ -1136,6 +1136,78 @@ func TestQuerySleepDailyTotal_EveningOnsetIsNotANap(t *testing.T) {
 	}
 }
 
+// An early bedtime begins inside the daytime onset window but is unmistakably a night.
+// Classifying on onset alone swallowed it into `naps`, filed it a day early, and blanked
+// onset/wake. Nap requires a daytime onset AND a short duration, not either alone.
+func TestQuerySleepDailyTotal_EarlyBedtimeIsNotANap(t *testing.T) {
+	db := tempDB(t)
+	insertSleepRows(t, db, [][]any{
+		{"Watch", "2024-01-01 19:15:00", "2024-01-02 03:00:00", "HKCategoryValueSleepAnalysisAsleepCore"},
+	})
+
+	results, err := db.QuerySleepDailyTotal(QueryParams{Table: "sleep", Limit: 50})
+	if err != nil {
+		t.Fatalf("query error: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 night, got %d: %v", len(results), results)
+	}
+	if results[0]["night"] != "2024-01-01" {
+		t.Errorf("expected night '2024-01-01', got %v", results[0]["night"])
+	}
+	if results[0]["hours"] != "7.8" {
+		t.Errorf("a 7.8h night must not become a nap: got hours=%v naps=%v",
+			results[0]["hours"], results[0]["naps"])
+	}
+	if results[0]["naps"] != "0.0" {
+		t.Errorf("expected naps 0.0, got %v", results[0]["naps"])
+	}
+	if results[0]["onset"] != "19:15" || results[0]["wake"] != "03:00" {
+		t.Errorf("expected onset 19:15 / wake 03:00, got %v / %v", results[0]["onset"], results[0]["wake"])
+	}
+}
+
+// A long daytime session is a night wherever it began. Calling a six-hour block a nap
+// loses more than mislabelling a long afternoon collapse does.
+func TestQuerySleepDailyTotal_LongDaytimeSleepIsNotANap(t *testing.T) {
+	db := tempDB(t)
+	insertSleepRows(t, db, [][]any{
+		{"Watch", "2024-01-01 13:00:00", "2024-01-01 19:00:00", "HKCategoryValueSleepAnalysisAsleepCore"},
+	})
+
+	results, err := db.QuerySleepDailyTotal(QueryParams{Table: "sleep", Limit: 50})
+	if err != nil {
+		t.Fatalf("query error: %v", err)
+	}
+	if results[0]["hours"] != "6.0" || results[0]["naps"] != "0.0" {
+		t.Errorf("expected 6.0h of night sleep and no naps, got hours=%v naps=%v",
+			results[0]["hours"], results[0]["naps"])
+	}
+}
+
+// A night whose only session is a nap has no recorded night sleep. Reporting 0.0 there
+// would assert the user slept nothing, which is as false as inventing hours outright.
+func TestQuerySleepDailyTotal_NapOnlyNightReportsNoHours(t *testing.T) {
+	db := tempDB(t)
+	insertSleepRows(t, db, [][]any{
+		{"Watch", "2024-01-02 14:00:00", "2024-01-02 15:30:00", "HKCategoryValueSleepAnalysisAsleepCore"},
+	})
+
+	results, err := db.QuerySleepDailyTotal(QueryParams{Table: "sleep", Limit: 50})
+	if err != nil {
+		t.Fatalf("query error: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 row, got %d", len(results))
+	}
+	if results[0]["hours"] != "" {
+		t.Errorf("night sleep is unknown, not zero: got hours=%q", results[0]["hours"])
+	}
+	if results[0]["naps"] != "1.5" {
+		t.Errorf("expected naps 1.5, got %v", results[0]["naps"])
+	}
+}
+
 // Two sources recording the same stage must be counted once, not twice. The --total
 // flag advertises deduplicated output and a plain SUM does not deliver it.
 func TestQuerySleepDailyTotal_OverlappingSegmentsCountedOnce(t *testing.T) {
