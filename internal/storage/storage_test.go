@@ -1037,6 +1037,198 @@ func TestQuerySleepDailyTotal_MultipleNights(t *testing.T) {
 	}
 }
 
+// A late sleeper who is still asleep past any fixed hour boundary must not have that
+// one night cut in two and filed under two dates. This is issue #17: a 6 AM boundary
+// split a 01:49 -> 08:30 night into a phantom "previous night" and a truncated one.
+func TestQuerySleepDailyTotal_LateSleeperNightNotSplit(t *testing.T) {
+	db := tempDB(t)
+	insertSleepRows(t, db, [][]any{
+		// One unbroken night: asleep 01:49, awake 08:30. Straddles 06:00.
+		{"Watch", "2024-01-02 01:49:00", "2024-01-02 05:49:00", "HKCategoryValueSleepAnalysisAsleepCore"},
+		{"Watch", "2024-01-02 05:49:00", "2024-01-02 08:30:00", "HKCategoryValueSleepAnalysisAsleepREM"},
+	})
+
+	results, err := db.QuerySleepDailyTotal(QueryParams{Table: "sleep", Limit: 50})
+	if err != nil {
+		t.Fatalf("query error: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected the night to stay whole, got %d rows: %v", len(results), results)
+	}
+	if results[0]["night"] != "2024-01-01" {
+		t.Errorf("expected night '2024-01-01' (the evening it began), got %v", results[0]["night"])
+	}
+	if results[0]["hours"] != "6.7" {
+		t.Errorf("expected the full 6.7h, got %v", results[0]["hours"])
+	}
+	if results[0]["onset"] != "01:49" || results[0]["wake"] != "08:30" {
+		t.Errorf("expected onset 01:49 / wake 08:30, got %v / %v", results[0]["onset"], results[0]["wake"])
+	}
+}
+
+// A night with no records must be absent, never fabricated. The old query invented
+// hours for nights the watch was not worn by borrowing them from adjacent sessions.
+func TestQuerySleepDailyTotal_MissingNightIsOmittedNotZero(t *testing.T) {
+	db := tempDB(t)
+	insertSleepRows(t, db, [][]any{
+		{"Watch", "2024-01-02 02:00:00", "2024-01-02 08:00:00", "HKCategoryValueSleepAnalysisAsleepCore"},
+		// Nothing at all for the night of Jan 2. Watch was off.
+		{"Watch", "2024-01-04 02:00:00", "2024-01-04 08:00:00", "HKCategoryValueSleepAnalysisAsleepCore"},
+	})
+
+	results, err := db.QuerySleepDailyTotal(QueryParams{Table: "sleep", Limit: 50})
+	if err != nil {
+		t.Fatalf("query error: %v", err)
+	}
+	if len(results) != 2 {
+		t.Fatalf("expected only the 2 nights with data, got %d: %v", len(results), results)
+	}
+	for _, r := range results {
+		if r["night"] == "2024-01-02" {
+			t.Errorf("night 2024-01-02 has no records and must not appear, got %v", r)
+		}
+	}
+}
+
+// A daytime nap is its own session. It must not inflate the night's hours, and it must
+// be attributed to the night that preceded it.
+func TestQuerySleepDailyTotal_NapReportedSeparately(t *testing.T) {
+	db := tempDB(t)
+	insertSleepRows(t, db, [][]any{
+		{"Watch", "2024-01-02 02:53:00", "2024-01-02 09:23:00", "HKCategoryValueSleepAnalysisAsleepCore"},
+		{"Watch", "2024-01-02 14:59:00", "2024-01-02 16:41:00", "HKCategoryValueSleepAnalysisAsleepCore"},
+	})
+
+	results, err := db.QuerySleepDailyTotal(QueryParams{Table: "sleep", Limit: 50})
+	if err != nil {
+		t.Fatalf("query error: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected nap to fold onto the preceding night's row, got %d: %v", len(results), results)
+	}
+	if results[0]["night"] != "2024-01-01" {
+		t.Errorf("expected night '2024-01-01', got %v", results[0]["night"])
+	}
+	if results[0]["hours"] != "6.5" {
+		t.Errorf("nap must not inflate night hours: expected 6.5, got %v", results[0]["hours"])
+	}
+	if results[0]["naps"] != "1.7" {
+		t.Errorf("expected naps 1.7, got %v", results[0]["naps"])
+	}
+}
+
+// An evening onset stays a night even though it begins before midnight.
+func TestQuerySleepDailyTotal_EveningOnsetIsNotANap(t *testing.T) {
+	db := tempDB(t)
+	insertSleepRows(t, db, [][]any{
+		{"Watch", "2024-01-01 21:30:00", "2024-01-02 05:30:00", "HKCategoryValueSleepAnalysisAsleepCore"},
+	})
+
+	results, err := db.QuerySleepDailyTotal(QueryParams{Table: "sleep", Limit: 50})
+	if err != nil {
+		t.Fatalf("query error: %v", err)
+	}
+	if results[0]["night"] != "2024-01-01" || results[0]["hours"] != "8.0" {
+		t.Errorf("expected night 2024-01-01 with 8.0h, got %v", results[0])
+	}
+	if results[0]["naps"] != "0.0" {
+		t.Errorf("a 21:30 onset is a night, not a nap; got naps=%v", results[0]["naps"])
+	}
+}
+
+// An early bedtime begins inside the daytime onset window but is unmistakably a night.
+// Classifying on onset alone swallowed it into `naps`, filed it a day early, and blanked
+// onset/wake. Nap requires a daytime onset AND a short duration, not either alone.
+func TestQuerySleepDailyTotal_EarlyBedtimeIsNotANap(t *testing.T) {
+	db := tempDB(t)
+	insertSleepRows(t, db, [][]any{
+		{"Watch", "2024-01-01 19:15:00", "2024-01-02 03:00:00", "HKCategoryValueSleepAnalysisAsleepCore"},
+	})
+
+	results, err := db.QuerySleepDailyTotal(QueryParams{Table: "sleep", Limit: 50})
+	if err != nil {
+		t.Fatalf("query error: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 night, got %d: %v", len(results), results)
+	}
+	if results[0]["night"] != "2024-01-01" {
+		t.Errorf("expected night '2024-01-01', got %v", results[0]["night"])
+	}
+	if results[0]["hours"] != "7.8" {
+		t.Errorf("a 7.8h night must not become a nap: got hours=%v naps=%v",
+			results[0]["hours"], results[0]["naps"])
+	}
+	if results[0]["naps"] != "0.0" {
+		t.Errorf("expected naps 0.0, got %v", results[0]["naps"])
+	}
+	if results[0]["onset"] != "19:15" || results[0]["wake"] != "03:00" {
+		t.Errorf("expected onset 19:15 / wake 03:00, got %v / %v", results[0]["onset"], results[0]["wake"])
+	}
+}
+
+// A long daytime session is a night wherever it began. Calling a six-hour block a nap
+// loses more than mislabelling a long afternoon collapse does.
+func TestQuerySleepDailyTotal_LongDaytimeSleepIsNotANap(t *testing.T) {
+	db := tempDB(t)
+	insertSleepRows(t, db, [][]any{
+		{"Watch", "2024-01-01 13:00:00", "2024-01-01 19:00:00", "HKCategoryValueSleepAnalysisAsleepCore"},
+	})
+
+	results, err := db.QuerySleepDailyTotal(QueryParams{Table: "sleep", Limit: 50})
+	if err != nil {
+		t.Fatalf("query error: %v", err)
+	}
+	if results[0]["hours"] != "6.0" || results[0]["naps"] != "0.0" {
+		t.Errorf("expected 6.0h of night sleep and no naps, got hours=%v naps=%v",
+			results[0]["hours"], results[0]["naps"])
+	}
+}
+
+// A night whose only session is a nap has no recorded night sleep. Reporting 0.0 there
+// would assert the user slept nothing, which is as false as inventing hours outright.
+func TestQuerySleepDailyTotal_NapOnlyNightReportsNoHours(t *testing.T) {
+	db := tempDB(t)
+	insertSleepRows(t, db, [][]any{
+		{"Watch", "2024-01-02 14:00:00", "2024-01-02 15:30:00", "HKCategoryValueSleepAnalysisAsleepCore"},
+	})
+
+	results, err := db.QuerySleepDailyTotal(QueryParams{Table: "sleep", Limit: 50})
+	if err != nil {
+		t.Fatalf("query error: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 row, got %d", len(results))
+	}
+	if results[0]["hours"] != "" {
+		t.Errorf("night sleep is unknown, not zero: got hours=%q", results[0]["hours"])
+	}
+	if results[0]["naps"] != "1.5" {
+		t.Errorf("expected naps 1.5, got %v", results[0]["naps"])
+	}
+}
+
+// Two sources recording the same stage must be counted once, not twice. The --total
+// flag advertises deduplicated output and a plain SUM does not deliver it.
+func TestQuerySleepDailyTotal_OverlappingSegmentsCountedOnce(t *testing.T) {
+	db := tempDB(t)
+	insertSleepRows(t, db, [][]any{
+		{"Watch", "2024-01-02 01:00:00", "2024-01-02 07:00:00", "HKCategoryValueSleepAnalysisAsleepCore"},
+		{"iPhone", "2024-01-02 01:00:00", "2024-01-02 07:00:00", "HKCategoryValueSleepAnalysisAsleepCore"},
+	})
+
+	results, err := db.QuerySleepDailyTotal(QueryParams{Table: "sleep", Limit: 50})
+	if err != nil {
+		t.Fatalf("query error: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 night, got %d", len(results))
+	}
+	if results[0]["hours"] != "6.0" {
+		t.Errorf("overlapping duplicate records must count once: expected 6.0, got %v", results[0]["hours"])
+	}
+}
+
 // --to filters by night (shifted date), not raw start_date, so a session that
 // starts at 23:00 on the --to day still counts toward that night.
 func TestQuerySleepDailyTotal_ToFilterIncludesPreMidnight(t *testing.T) {

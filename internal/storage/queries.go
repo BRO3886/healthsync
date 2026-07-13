@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // TableInfo holds per-table stats for db info output.
@@ -493,15 +494,123 @@ func (db *DB) queryEnergyDailyTotal(tableName string, params QueryParams) ([]map
 	return results, nil
 }
 
-// QuerySleepDailyTotal returns nightly sleep duration totals grouped by sleep night.
-// It shifts timestamps back 6 hours so that sessions starting in the evening (e.g. 23:00)
-// are attributed to the next calendar day's "sleep night". Only counts Asleep stages
-// (Core, Deep, REM, Unspecified), excluding InBed and Awake.
+const (
+	// sleepTimeLayout is the normalized form the parser writes to the sleep table.
+	sleepTimeLayout = "2006-01-02 15:04:05"
+
+	// sleepSessionGap is the idle time that separates two distinct sleep sessions.
+	// Awake segments inside a single night run to minutes; the gap between waking
+	// and a daytime nap runs to hours.
+	sleepSessionGap = 2 * time.Hour
+
+	// napOnsetStart and napOnsetEnd bound the hours in which a session may be a nap.
+	// Onset alone cannot decide it: a bedtime of 19:15 sits inside this window and is
+	// plainly a night, not a nap. Duration alone cannot decide it either: a two-hour
+	// night before an early flight is still a night. A nap is the conjunction of both,
+	// so a session qualifies only if it begins during the day AND stays short.
+	napOnsetStart = 11
+	napOnsetEnd   = 20
+
+	// napMaxDuration is the longest a daytime session can run and still be a nap.
+	// Beyond this it is treated as a night wherever it began, because calling a
+	// six-hour block a nap loses more than mislabelling a long afternoon collapse.
+	napMaxDuration = 4 * time.Hour
+
+	// nightShift maps an onset to the night it belongs to. Any onset from noon
+	// onwards keeps its own date; any onset before noon rolls back to the previous
+	// date. This holds across the full plausible range of human bedtimes.
+	nightShift = 12 * time.Hour
+)
+
+// sleepSession is one contiguous run of Asleep segments, i.e. a real night or a
+// real nap, reconstructed from the gaps in the data rather than from the clock.
+type sleepSession struct {
+	start  time.Time
+	end    time.Time
+	asleep time.Duration
+}
+
+// isNap reports whether the session both began during the hours in which a person is
+// normally awake and stayed short enough to be a nap. Both conditions are required:
+// an early bedtime falls inside the onset window but is a night, and a short sleep at
+// 04:00 falls outside it but is also a night.
+func (s sleepSession) isNap() bool {
+	h := s.start.Hour()
+	inDaytime := h >= napOnsetStart && h < napOnsetEnd
+	return inDaytime && s.asleep < napMaxDuration
+}
+
+// night returns the date of the night this session belongs to. A nap is attributed
+// to the night that preceded it, so a night and the naps that follow it during the
+// same waking day land on one row.
+func (s sleepSession) night() string {
+	if s.isNap() {
+		return s.start.AddDate(0, 0, -1).Format(time.DateOnly)
+	}
+	return s.start.Add(-nightShift).Format(time.DateOnly)
+}
+
+// buildSleepSessions clusters time-ordered Asleep segments into sessions, breaking
+// wherever the data goes quiet for longer than sleepSessionGap. Overlapping segments
+// are merged before their durations are summed, so a stage recorded twice by two
+// sources is counted once.
+func buildSleepSessions(segments []sleepSession) []sleepSession {
+	var sessions []sleepSession
+	var cur []sleepSession
+
+	flush := func() {
+		if len(cur) == 0 {
+			return
+		}
+		merged := []sleepSession{cur[0]}
+		for _, seg := range cur[1:] {
+			last := &merged[len(merged)-1]
+			if !seg.start.After(last.end) {
+				if seg.end.After(last.end) {
+					last.end = seg.end
+				}
+				continue
+			}
+			merged = append(merged, seg)
+		}
+
+		var asleep time.Duration
+		for _, m := range merged {
+			asleep += m.end.Sub(m.start)
+		}
+		sessions = append(sessions, sleepSession{
+			start:  cur[0].start,
+			end:    cur[len(cur)-1].end,
+			asleep: asleep,
+		})
+		cur = nil
+	}
+
+	for _, seg := range segments {
+		if len(cur) > 0 && seg.start.Sub(cur[len(cur)-1].end) > sleepSessionGap {
+			flush()
+		}
+		cur = append(cur, seg)
+	}
+	flush()
+
+	return sessions
+}
+
+// QuerySleepDailyTotal returns nightly sleep totals, one row per night that actually
+// has data. Only Asleep stages count (Core, Deep, REM, Unspecified); InBed and Awake
+// are excluded.
+//
+// Segments are clustered into whole sessions before any date is assigned to them, so
+// a single night is never cut in half by a clock boundary. Nights with no recorded
+// sleep are omitted entirely rather than reported as zero: "did not sleep" and "did
+// not wear the watch" are different facts. Naps are reported in their own column and
+// are never folded into the night's hours.
 func (db *DB) QuerySleepDailyTotal(params QueryParams) ([]map[string]interface{}, error) {
-	query := `SELECT date(start_date, '-6 hours') AS night,
-		ROUND(SUM((julianday(end_date) - julianday(start_date)) * 24), 1) AS hours
-		FROM sleep
-		WHERE value LIKE '%Asleep%'`
+	// A night keyed to date D can hold segments recorded on D (evening onset) or on
+	// D+1 (post-midnight onset, and any nap during the following day), so the scan
+	// window is widened past To and the results are filtered by night afterwards.
+	query := `SELECT start_date, end_date FROM sleep WHERE value LIKE '%Asleep%'`
 	var args []interface{}
 
 	if params.From != "" {
@@ -509,16 +618,10 @@ func (db *DB) QuerySleepDailyTotal(params QueryParams) ([]map[string]interface{}
 		args = append(args, params.From)
 	}
 	if params.To != "" {
-		query += " AND date(start_date, '-6 hours') <= ?"
+		query += " AND date(start_date) <= date(?, '+2 days')"
 		args = append(args, params.To)
 	}
-
-	query += " GROUP BY night ORDER BY night DESC"
-
-	if params.Limit > 0 {
-		query += " LIMIT ?"
-		args = append(args, params.Limit)
-	}
+	query += " ORDER BY start_date ASC"
 
 	rows, err := db.conn.Query(query, args...)
 	if err != nil {
@@ -526,24 +629,90 @@ func (db *DB) QuerySleepDailyTotal(params QueryParams) ([]map[string]interface{}
 	}
 	defer rows.Close()
 
-	var results []map[string]interface{}
+	var segments []sleepSession
 	for rows.Next() {
-		var night string
-		var hours float64
-		if err := rows.Scan(&night, &hours); err != nil {
-			return nil, fmt.Errorf("scanning sleep total row: %w", err)
+		var startStr, endStr string
+		if err := rows.Scan(&startStr, &endStr); err != nil {
+			return nil, fmt.Errorf("scanning sleep row: %w", err)
 		}
-		results = append(results, map[string]interface{}{
-			"night": night,
-			"hours": strconv.FormatFloat(hours, 'f', 1, 64),
-		})
+		start, err := time.Parse(sleepTimeLayout, startStr)
+		if err != nil {
+			continue
+		}
+		end, err := time.Parse(sleepTimeLayout, endStr)
+		if err != nil || !end.After(start) {
+			continue
+		}
+		segments = append(segments, sleepSession{start: start, end: end})
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	if results == nil {
-		results = []map[string]interface{}{}
+	type nightTotal struct {
+		hours float64
+		naps  float64
+		onset time.Time
+		wake  time.Time
+	}
+	totals := make(map[string]*nightTotal)
+
+	for _, s := range buildSleepSessions(segments) {
+		night := s.night()
+		if params.From != "" && night < params.From[:min(len(params.From), 10)] {
+			continue
+		}
+		if params.To != "" && night > params.To[:min(len(params.To), 10)] {
+			continue
+		}
+
+		t, ok := totals[night]
+		if !ok {
+			t = &nightTotal{}
+			totals[night] = t
+		}
+		if s.isNap() {
+			t.naps += s.asleep.Hours()
+			continue
+		}
+		t.hours += s.asleep.Hours()
+		if t.onset.IsZero() || s.start.Before(t.onset) {
+			t.onset = s.start
+		}
+		if s.end.After(t.wake) {
+			t.wake = s.end
+		}
+	}
+
+	nights := make([]string, 0, len(totals))
+	for night := range totals {
+		nights = append(nights, night)
+	}
+	sort.Sort(sort.Reverse(sort.StringSlice(nights)))
+
+	if params.Limit > 0 && len(nights) > params.Limit {
+		nights = nights[:params.Limit]
+	}
+
+	results := make([]map[string]interface{}, 0, len(nights))
+	for _, night := range nights {
+		t := totals[night]
+		row := map[string]interface{}{
+			"night": night,
+			"naps":  strconv.FormatFloat(t.naps, 'f', 1, 64),
+			// A night that holds only a nap has no recorded night sleep. Reporting
+			// 0.0 there would claim the user slept nothing, which is the same
+			// fabrication as inventing hours for an unworn watch.
+			"hours": "",
+			"onset": "",
+			"wake":  "",
+		}
+		if !t.onset.IsZero() {
+			row["hours"] = strconv.FormatFloat(t.hours, 'f', 1, 64)
+			row["onset"] = t.onset.Format("15:04")
+			row["wake"] = t.wake.Format("15:04")
+		}
+		results = append(results, row)
 	}
 	return results, nil
 }

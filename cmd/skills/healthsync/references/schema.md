@@ -787,18 +787,27 @@ LIMIT 30;
 
 ### Sleep duration per night (asleep only)
 
-Via CLI: `healthsync query sleep --total --from 2024-01-01`
+**Use the CLI for this. Do not hand-roll it in SQL.**
 
-Or via SQL (note the `-6 hours` shift for correct night grouping):
+```bash
+healthsync query sleep --total --from 2024-01-01
+```
+
+Grouping sleep by night is not a `GROUP BY date(...)`, and every attempt to write it as one is wrong. Any expression that buckets segments by a shifted calendar date puts the night boundary at some fixed hour, and whatever hour you choose will fall in the middle of somebody's night: pick 06:00 and you cut a late sleeper's sleep in half, filing the two halves under two different dates. That produces plausible-looking hours for nights that have no data at all, and undercounts the nights that do. It is not a hypothetical — it shipped, and it is issue #17.
+
+Correct nightly grouping requires clustering the segments into sessions first (break wherever the data goes quiet for more than ~2h), merging any overlapping segments, and only then assigning one date to each whole session. That is what `--total` does. Reproducing it in raw SQL is not worth it.
+
+If you must go to the raw table, query the **segments** and reason about sessions yourself — do not aggregate by date:
+
 ```sql
-SELECT date(start_date, '-6 hours') as night,
-       ROUND(SUM((julianday(end_date) - julianday(start_date)) * 24), 1) as hours
+SELECT start_date, end_date, value
 FROM sleep
 WHERE value LIKE '%Asleep%'
-GROUP BY night
-ORDER BY night DESC
-LIMIT 14;
+  AND start_date >= '2024-01-01'
+ORDER BY start_date ASC;
 ```
+
+Two things to hold onto when you interpret the result: a night with no rows means the watch was not worn, **not** that the user did not sleep, and daytime naps are separate sessions that should not be added into a night's total.
 
 ### Workout summary by type
 

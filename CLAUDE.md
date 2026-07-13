@@ -57,7 +57,7 @@ go test ./... -coverprofile=coverage.out && go tool cover -func=coverage.out
 - `TableNameMap` maps both hyphen and underscore CLI names to DB table names (60+ entries)
 - `--format table|json|csv` — CSV/JSON use `sortedKeys()` for deterministic column order
 - `--total` routes to dedicated daily-total methods (NOT `QueryRows`) with overlap dedup. Supported: `steps`, `active-energy`, `basal-energy`, `sleep`
-- `sleep --total` uses `date(start_date, '-6 hours')` to group by sleep night (pre-midnight sessions attributed to the correct night); filters `value LIKE '%Asleep%'` to exclude InBed and Awake; `--to` filter also gates on the shifted night date, not raw `start_date`
+- `sleep --total` groups by **session**, not by a clock boundary. Segments are clustered into sessions by breaking on gaps > 2h, then each whole session is assigned one night from its onset (`onset - 12h`). An earlier version bucketed on `date(start_date, '-6 hours')`, which put the night boundary at 06:00 and tore any night that ran past 6 AM in half — see #17. Any fixed hour bisects someone's sleep, so no fixed hour is used. Overlapping segments are merged before summing. Naps (daytime onset AND under 4h) go in their own column and never inflate `hours`. **Nights with no records are omitted, never reported as zero** — "did not sleep" and "did not wear the watch" are different facts. Filters `value LIKE '%Asleep%'` to exclude InBed and Awake; both `--from` and `--to` gate on the computed night
 - Source-priority deduplication: Watch=2 > iPhone=1 > other=0 (uses `strings.Contains` on sourceName)
 
 ### Server
@@ -89,7 +89,9 @@ go test ./... -coverprofile=coverage.out && go tool cover -func=coverage.out
 - Tests use `testing/fstest.MapFS` as fake embedded FS (no real files needed)
 
 ## Latest Release
-- v0.5.1 (unreleased, on main) — strip tz offsets from stored timestamps, `sleep --total` with 6h night shift, localized zip support (Chinese etc. via content sniffing)
+- v0.5.3 — `sleep --total` grouped by session instead of a fixed hour boundary (#17): a night running past 6 AM was split across two dates, fabricating hours for unworn nights and undercounting real ones. Adds `naps`, `onset`, `wake` columns; omits nights with no data
+- v0.5.2 — date parsing fixes
+- v0.5.1 — strip tz offsets from stored timestamps, `sleep --total` with 6h night shift, localized zip support (Chinese etc. via content sniffing)
 - v0.5.0 — `db info` subcommand, background update checker, OpenClaw skills target
 - v0.4.0 — 40+ Apple Health metrics, multi-format query output (table/json/csv), --total flag
 - v0.3.0 — skills install/uninstall/status command; 6 platform archives
