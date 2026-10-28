@@ -2,6 +2,8 @@ module github.com/BRO3886/healthsync
 
 go 1.24.5
 
+toolchain go1.26.10
+
 require (
 	github.com/charmbracelet/huh v0.8.0
 	github.com/fatih/color v1.18.0
